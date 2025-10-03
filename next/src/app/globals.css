@@ -8,16 +8,17 @@
     --color-dark: #050304;
     
     /* Primary Colors */
-    --color-primary: #E281B1;
-    --color-primary-dark: #d06a9f;
-    --color-primary-light: #e99dc4;
+    --color-primary: #050304;
+    --color-primary-dark: #030202;
+    --color-primary-light: #1a0f0f;
     
     /* Background Colors */
     --color-background: #FFFFFF;
-    --color-background-secondary: #f8f9fa;
+    --color-background-secondary: #050304;
+    --color-background-tertiary: #E281B1;
     
     /* Text Colors */
-    --color-text: #050304;
+    --color-text: #E281B1;
     --color-text-secondary: #6c757d;
     --color-text-light: #FFFFFF;
     
@@ -26,7 +27,15 @@
     --color-accent: #E281B1;
     
     /* State Colors (derived from your palette) */
-    --color-hover: #d06a9f;
-    --color-active: #c05a8f;
+    --color-hover: #E281B1;
+    --color-active: #E281B1;
     --color-disabled: #e0e0e0;
+}
+
+body {
+    font-family: 'Arial', sans-serif;
+    background-color: var(--color-background);
+    color: var(--color-text);
+    margin: 0;
+    padding: 0;
 }
