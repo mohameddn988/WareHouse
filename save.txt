@@ -1,0 +1,747 @@
+"use client";
+
+import React, { useState } from "react";
+import LeftRail from "./left-rail";
+import Toolbar from "./toolbar";
+import StatusBar from "./status-bar";
+import DataView from "../sections/data-view";
+import ConfigPanel from "../sections/config-panel";
+
+const MainCanvas: React.FC = () => {
+  // State management
+  const [selectedDataset, setSelectedDataset] = useState<"A" | "B">("A");
+  const [operations, setOperations] = useState<string[]>([
+    "Load Data",
+    "Remove Duplicates",
+  ]);
+  const [canUndo, setCanUndo] = useState(true);
+  const [canRedo, setCanRedo] = useState(false);
+  const [viewMode, setViewMode] = useState<"split" | "tabs">("split");
+
+  // Handlers
+  const handleActionClick = (action: string) => {
+    console.log("Action clicked:", action);
+    // Add your action logic here
+  };
+
+  const handleDatasetChange = (dataset: "A" | "B") => {
+    setSelectedDataset(dataset);
+    console.log("Dataset changed to:", dataset);
+  };
+
+  const handleApply = () => {
+    console.log("Apply clicked");
+    // Add your apply logic here
+  };
+
+  const handleUndo = () => {
+    console.log("Undo clicked");
+    // Add your undo logic here
+  };
+
+  const handleRedo = () => {
+    console.log("Redo clicked");
+    // Add your redo logic here
+  };
+
+  const handleViewModeChange = (mode: "split" | "tabs") => {
+    setViewMode(mode);
+    console.log("View mode changed to:", mode);
+  };
+
+  const handleOptionChange = (optionId: string, value: any) => {
+    console.log("Option changed:", optionId, value);
+    // Add your option change logic here
+  };
+
+  const handleConfigApply = () => {
+    console.log("Config applied");
+    // Add your config apply logic here
+  };
+
+  const handleConfigReset = () => {
+    console.log("Config reset");
+    // Add your config reset logic here
+  };
+
+  return (
+    <div className="flex flex-col h-screen">
+      {/* Main Content Area */}
+      <div className="flex flex-1 overflow-hidden">
+        {/* Left Rail */}
+        <LeftRail onActionClick={handleActionClick} />
+
+        {/* Center Content */}
+        <div className="flex-1 flex flex-col overflow-hidden">
+          {/* Toolbar */}
+          <Toolbar
+            selectedDataset={selectedDataset}
+            onDatasetChange={handleDatasetChange}
+            operations={operations}
+            onApply={handleApply}
+            onUndo={handleUndo}
+            onRedo={handleRedo}
+            canUndo={canUndo}
+            canRedo={canRedo}
+          />
+
+          {/* Data View */}
+          <div className="flex-1 overflow-hidden">
+            <DataView mode={viewMode} onModeChange={handleViewModeChange} />
+          </div>
+        </div>
+
+        {/* Right Panel - Config */}
+        <ConfigPanel
+          onOptionChange={handleOptionChange}
+          onApply={handleConfigApply}
+          onReset={handleConfigReset}
+        />
+      </div>
+
+      {/* Status Bar */}
+      <StatusBar
+        currentDataset={selectedDataset}
+        rows={1234}
+        columns={12}
+        lastOperation="Remove Duplicates"
+        processingTime="0.45s"
+      />
+    </div>
+  );
+};
+
+export default MainCanvas;
+
+
+
+
+
+
+
+"use client";
+
+import React from "react";
+
+interface StatusBarProps {
+  currentDataset?: "A" | "B";
+  rows?: number;
+  columns?: number;
+  lastOperation?: string;
+  processingTime?: string;
+  memoryUsage?: string;
+}
+
+const StatusBar: React.FC<StatusBarProps> = ({
+  currentDataset = "A",
+  rows = 1234,
+  columns = 12,
+  lastOperation = "Remove Duplicates",
+  processingTime = "0.45s",
+  memoryUsage = "24.5 MB",
+}) => {
+  return (
+    <footer className="bg-[var(--color-primary)] text-[var(--color-text)] border-t border-[var(--color-border)] px-4 py-2">
+      <div className="flex items-center justify-between text-xs">
+        {/* Left Section */}
+        <div className="flex items-center gap-6">
+          {/* Current Dataset */}
+          <div className="flex items-center gap-2">
+            <span className="text-[var(--color-text-secondary)]">Dataset:</span>
+            <span className="font-semibold bg-[var(--color-accent)] text-[var(--color-text-light)] px-2 py-1 rounded">
+              {currentDataset}
+            </span>
+          </div>
+
+          {/* Dimensions */}
+          <div className="flex items-center gap-2">
+            <span className="text-[var(--color-text-secondary)]">Size:</span>
+            <span className="font-medium">
+              {rows.toLocaleString()} × {columns}
+            </span>
+          </div>
+
+          {/* Last Operation */}
+          <div className="flex items-center gap-2">
+            <span className="text-[var(--color-text-secondary)]">Last Operation:</span>
+            <span className="font-medium">{lastOperation}</span>
+          </div>
+
+          {/* Processing Time */}
+          <div className="flex items-center gap-2">
+            <span className="text-[var(--color-text-secondary)]">⏱️ Time:</span>
+            <span className="font-medium">{processingTime}</span>
+          </div>
+        </div>
+
+        {/* Right Section */}
+        <div className="flex items-center gap-6">
+          {/* Memory Usage */}
+          <div className="flex items-center gap-2">
+            <span className="text-[var(--color-text-secondary)]">💾 Memory:</span>
+            <span className="font-medium">{memoryUsage}</span>
+          </div>
+
+          {/* Status Indicator */}
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+            <span className="font-medium text-green-400">Ready</span>
+          </div>
+
+          {/* Timestamp */}
+          <div className="text-[var(--color-text-secondary)]">
+            {new Date().toLocaleTimeString()}
+          </div>
+        </div>
+      </div>
+    </footer>
+  );
+};
+
+export default StatusBar;
+
+
+
+
+
+
+
+"use client";
+
+import React, { useState } from "react";
+
+interface ConfigOption {
+  id: string;
+  label: string;
+  type: "select" | "checkbox" | "number" | "text";
+  value?: any;
+  options?: string[];
+  min?: number;
+  max?: number;
+}
+
+interface ConfigPanelProps {
+  modelName?: string;
+  options?: ConfigOption[];
+  onOptionChange?: (optionId: string, value: any) => void;
+  onApply?: () => void;
+  onReset?: () => void;
+}
+
+const ConfigPanel: React.FC<ConfigPanelProps> = ({
+  modelName = "Remove Duplicates",
+  options = [
+    {
+      id: "column",
+      label: "Column to Check",
+      type: "select",
+      value: "All",
+      options: ["All", "ID", "Name", "Age", "City"],
+    },
+    {
+      id: "keepFirst",
+      label: "Keep First Occurrence",
+      type: "checkbox",
+      value: true,
+    },
+    {
+      id: "ignoreCase",
+      label: "Ignore Case",
+      type: "checkbox",
+      value: false,
+    },
+    {
+      id: "threshold",
+      label: "Similarity Threshold",
+      type: "number",
+      value: 95,
+      min: 0,
+      max: 100,
+    },
+  ],
+  onOptionChange,
+  onApply,
+  onReset,
+}) => {
+  const [localOptions, setLocalOptions] = useState(options);
+
+  const handleChange = (optionId: string, value: any) => {
+    setLocalOptions((prev) =>
+      prev.map((opt) => (opt.id === optionId ? { ...opt, value } : opt))
+    );
+    onOptionChange?.(optionId, value);
+  };
+
+  const renderOption = (option: ConfigOption) => {
+    switch (option.type) {
+      case "select":
+        return (
+          <select
+            value={option.value}
+            onChange={(e) => handleChange(option.id, e.target.value)}
+            className="w-full px-3 py-2 bg-white border border-[var(--color-border)] rounded text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+          >
+            {option.options?.map((opt) => (
+              <option key={opt} value={opt}>
+                {opt}
+              </option>
+            ))}
+          </select>
+        );
+
+      case "checkbox":
+        return (
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={option.value}
+              onChange={(e) => handleChange(option.id, e.target.checked)}
+              className="w-4 h-4 text-[var(--color-accent)] focus:ring-[var(--color-accent)]"
+            />
+            <span className="text-sm">{option.label}</span>
+          </label>
+        );
+
+      case "number":
+        return (
+          <div className="space-y-1">
+            <div className="flex items-center justify-between">
+              <label className="text-sm font-medium">{option.label}</label>
+              <span className="text-sm text-[var(--color-accent)] font-semibold">
+                {option.value}%
+              </span>
+            </div>
+            <input
+              type="range"
+              min={option.min}
+              max={option.max}
+              value={option.value}
+              onChange={(e) => handleChange(option.id, Number(e.target.value))}
+              className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[var(--color-accent)]"
+            />
+            <div className="flex justify-between text-xs text-[var(--color-text-secondary)]">
+              <span>{option.min}%</span>
+              <span>{option.max}%</span>
+            </div>
+          </div>
+        );
+
+      case "text":
+        return (
+          <input
+            type="text"
+            value={option.value}
+            onChange={(e) => handleChange(option.id, e.target.value)}
+            placeholder={option.label}
+            className="w-full px-3 py-2 bg-white border border-[var(--color-border)] rounded text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+          />
+        );
+
+      default:
+        return null;
+    }
+  };
+
+  return (
+    <aside className="w-80 bg-white border-l border-[var(--color-border)] flex flex-col h-full">
+      {/* Header */}
+      <div className="bg-[var(--color-primary)] text-[var(--color-text)] px-4 py-3 border-b border-[var(--color-border)]">
+        <h2 className="text-lg font-semibold">Configuration</h2>
+        <p className="text-xs text-[var(--color-text-secondary)] mt-1">
+          {modelName}
+        </p>
+      </div>
+
+      {/* Options */}
+      <div className="flex-1 overflow-auto p-4 space-y-4">
+        {localOptions.map((option) => (
+          <div key={option.id} className="space-y-2">
+            {option.type !== "checkbox" && (
+              <label className="block text-sm font-medium text-[var(--color-text)]">
+                {option.label}
+              </label>
+            )}
+            {renderOption(option)}
+          </div>
+        ))}
+
+        {/* Additional Info Section */}
+        <div className="pt-4 mt-4 border-t border-[var(--color-border)]">
+          <h3 className="text-sm font-semibold text-[var(--color-text)] mb-2">
+            Model Information
+          </h3>
+          <div className="text-xs space-y-2 text-[var(--color-text-secondary)]">
+            <p>
+              <strong>Algorithm:</strong> Hash-based comparison
+            </p>
+            <p>
+              <strong>Complexity:</strong> O(n)
+            </p>
+            <p>
+              <strong>Memory:</strong> Moderate
+            </p>
+          </div>
+        </div>
+
+        {/* Tips Section */}
+        <div className="bg-blue-50 border border-blue-200 rounded p-3">
+          <h4 className="text-xs font-semibold text-blue-900 mb-1">💡 Tip</h4>
+          <p className="text-xs text-blue-700">
+            Use "Keep First Occurrence" to maintain the original order of your
+            data after removing duplicates.
+          </p>
+        </div>
+      </div>
+
+      {/* Action Buttons */}
+      <div className="border-t border-[var(--color-border)] p-4 space-y-2">
+        <button
+          onClick={onApply}
+          className="w-full px-4 py-2 bg-[var(--color-accent)] text-[var(--color-text-light)] rounded font-medium hover:opacity-90 transition-opacity"
+        >
+          Apply Configuration
+        </button>
+        <button
+          onClick={onReset}
+          className="w-full px-4 py-2 bg-gray-200 text-gray-700 rounded font-medium hover:bg-gray-300 transition-colors"
+        >
+          Reset to Defaults
+        </button>
+      </div>
+    </aside>
+  );
+};
+
+export default ConfigPanel;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+"use client";
+
+import React from "react";
+
+interface ToolbarProps {
+  selectedDataset?: "A" | "B";
+  onDatasetChange?: (dataset: "A" | "B") => void;
+  operations?: string[];
+  onApply?: () => void;
+  onUndo?: () => void;
+  onRedo?: () => void;
+  canUndo?: boolean;
+  canRedo?: boolean;
+}
+
+const Toolbar: React.FC<ToolbarProps> = ({
+  selectedDataset = "A",
+  onDatasetChange,
+  operations = ["Load Data", "Remove Duplicates"],
+  onApply,
+  onUndo,
+  onRedo,
+  canUndo = true,
+  canRedo = false,
+}) => {
+  return (
+    <div className="bg-[var(--color-background)] border-b border-[var(--color-border)] px-4 py-3 flex items-center justify-between">
+      {/* Left Section: Dataset Selector */}
+      <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2">
+          <label className="text-sm font-medium text-[var(--color-text)]">
+            Dataset:
+          </label>
+          <div className="flex bg-[var(--color-primary-light)] rounded overflow-hidden">
+            <button
+              onClick={() => onDatasetChange?.("A")}
+              className={`px-4 py-2 text-sm font-medium transition-colors ${
+                selectedDataset === "A"
+                  ? "bg-[var(--color-accent)] text-[var(--color-text-light)]"
+                  : "text-[var(--color-text)] hover:bg-[var(--color-hover)] hover:text-[var(--color-text-light)]"
+              }`}
+            >
+              Dataset A
+            </button>
+            <button
+              onClick={() => onDatasetChange?.("B")}
+              className={`px-4 py-2 text-sm font-medium transition-colors ${
+                selectedDataset === "B"
+                  ? "bg-[var(--color-accent)] text-[var(--color-text-light)]"
+                  : "text-[var(--color-text)] hover:bg-[var(--color-hover)] hover:text-[var(--color-text-light)]"
+              }`}
+            >
+              Dataset B
+            </button>
+          </div>
+        </div>
+
+        {/* Operation Breadcrumb */}
+        <div className="flex items-center gap-2 ml-4">
+          <span className="text-sm text-[var(--color-text-secondary)]">
+            Operations:
+          </span>
+          <div className="flex items-center gap-2">
+            {operations.length === 0 ? (
+              <span className="text-sm text-[var(--color-text-secondary)] italic">
+                None
+              </span>
+            ) : (
+              operations.map((operation, index) => (
+                <React.Fragment key={index}>
+                  <span className="text-sm bg-[var(--color-primary-light)] text-[var(--color-text)] px-3 py-1 rounded">
+                    {operation}
+                  </span>
+                  {index < operations.length - 1 && (
+                    <span className="text-[var(--color-text-secondary)]">→</span>
+                  )}
+                </React.Fragment>
+              ))
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Right Section: Action Buttons */}
+      <div className="flex items-center gap-2">
+        <button
+          onClick={onUndo}
+          disabled={!canUndo}
+          className={`px-4 py-2 text-sm font-medium rounded transition-colors ${
+            canUndo
+              ? "bg-[var(--color-primary-light)] text-[var(--color-text)] hover:bg-[var(--color-hover)] hover:text-[var(--color-text-light)]"
+              : "bg-gray-200 text-gray-400 cursor-not-allowed"
+          }`}
+          title="Undo (Ctrl+Z)"
+        >
+          ↶ Undo
+        </button>
+        <button
+          onClick={onRedo}
+          disabled={!canRedo}
+          className={`px-4 py-2 text-sm font-medium rounded transition-colors ${
+            canRedo
+              ? "bg-[var(--color-primary-light)] text-[var(--color-text)] hover:bg-[var(--color-hover)] hover:text-[var(--color-text-light)]"
+              : "bg-gray-200 text-gray-400 cursor-not-allowed"
+          }`}
+          title="Redo (Ctrl+Y)"
+        >
+          ↷ Redo
+        </button>
+        <button
+          onClick={onApply}
+          className="px-6 py-2 text-sm font-medium bg-[var(--color-accent)] text-[var(--color-text-light)] rounded hover:opacity-90 transition-opacity ml-2"
+        >
+          ✓ Apply
+        </button>
+      </div>
+    </div>
+  );
+};
+
+export default Toolbar;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+"use client";
+
+import React, { useState } from "react";
+
+interface DataCell {
+  value: string | number;
+  changed?: boolean;
+}
+
+interface DataViewProps {
+  beforeData?: DataCell[][];
+  afterData?: DataCell[][];
+  mode?: "split" | "tabs";
+  showDiff?: boolean;
+  onModeChange?: (mode: "split" | "tabs") => void;
+}
+
+const DataView: React.FC<DataViewProps> = ({
+  beforeData = [
+    [{ value: "ID" }, { value: "Name" }, { value: "Age" }, { value: "City" }],
+    [{ value: 1 }, { value: "John Doe" }, { value: 28 }, { value: "New York" }],
+    [{ value: 2 }, { value: "Jane Smith" }, { value: 34 }, { value: "Los Angeles" }],
+    [{ value: 3 }, { value: "Bob Johnson" }, { value: 45 }, { value: "Chicago" }],
+    [{ value: 4 }, { value: "Alice Brown" }, { value: 29 }, { value: "Houston" }],
+  ],
+  afterData = [
+    [{ value: "ID" }, { value: "Name" }, { value: "Age" }, { value: "City" }],
+    [{ value: 1 }, { value: "John Doe" }, { value: 28, changed: true }, { value: "New York" }],
+    [{ value: 2 }, { value: "Jane Smith" }, { value: 35, changed: true }, { value: "Los Angeles" }],
+    [{ value: 3 }, { value: "Bob Johnson" }, { value: 45 }, { value: "Chicago" }],
+    [{ value: 5, changed: true }, { value: "Alice Brown" }, { value: 29 }, { value: "Houston" }],
+  ],
+  mode = "split",
+  showDiff = true,
+  onModeChange,
+}) => {
+  const [activeTab, setActiveTab] = useState<"before" | "after">("before");
+  const [viewMode, setViewMode] = useState<"split" | "tabs">(mode);
+
+  const handleModeChange = (newMode: "split" | "tabs") => {
+    setViewMode(newMode);
+    onModeChange?.(newMode);
+  };
+
+  const renderTable = (data: DataCell[][], title: string, highlightChanges = false) => (
+    <div className="flex flex-col h-full">
+      <div className="bg-[var(--color-primary-light)] px-4 py-2 border-b border-[var(--color-border)]">
+        <h3 className="text-sm font-semibold text-[var(--color-text)]">{title}</h3>
+      </div>
+      <div className="flex-1 overflow-auto">
+        <table className="w-full text-sm">
+          <thead className="bg-[var(--color-primary)] text-[var(--color-text)] sticky top-0">
+            <tr>
+              {data[0]?.map((cell, colIndex) => (
+                <th
+                  key={colIndex}
+                  className="px-4 py-2 text-left font-semibold border-r border-[var(--color-border)]"
+                >
+                  {cell.value}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {data.slice(1).map((row, rowIndex) => (
+              <tr
+                key={rowIndex}
+                className="border-b border-[var(--color-border)] hover:bg-[var(--color-primary-light)]"
+              >
+                {row.map((cell, colIndex) => (
+                  <td
+                    key={colIndex}
+                    className={`px-4 py-2 border-r border-[var(--color-border)] ${
+                      highlightChanges && showDiff && cell.changed
+                        ? "bg-yellow-200 font-semibold"
+                        : ""
+                    }`}
+                  >
+                    {cell.value}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="flex flex-col h-full bg-white">
+      {/* View Mode Selector */}
+      <div className="bg-[var(--color-background)] border-b border-[var(--color-border)] px-4 py-2 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-medium text-[var(--color-text)]">View:</span>
+          <div className="flex bg-[var(--color-primary-light)] rounded overflow-hidden">
+            <button
+              onClick={() => handleModeChange("split")}
+              className={`px-3 py-1 text-xs font-medium transition-colors ${
+                viewMode === "split"
+                  ? "bg-[var(--color-accent)] text-[var(--color-text-light)]"
+                  : "text-[var(--color-text)] hover:bg-[var(--color-hover)] hover:text-[var(--color-text-light)]"
+              }`}
+            >
+              Split
+            </button>
+            <button
+              onClick={() => handleModeChange("tabs")}
+              className={`px-3 py-1 text-xs font-medium transition-colors ${
+                viewMode === "tabs"
+                  ? "bg-[var(--color-accent)] text-[var(--color-text-light)]"
+                  : "text-[var(--color-text)] hover:bg-[var(--color-hover)] hover:text-[var(--color-text-light)]"
+              }`}
+            >
+              Tabs
+            </button>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <label className="flex items-center gap-2 text-sm text-[var(--color-text)]">
+            <input
+              type="checkbox"
+              checked={showDiff}
+              className="w-4 h-4"
+              readOnly
+            />
+            <span>Highlight Changes</span>
+          </label>
+        </div>
+      </div>
+
+      {/* Data Display */}
+      {viewMode === "split" ? (
+        <div className="flex-1 flex overflow-hidden">
+          {/* Before Panel */}
+          <div className="flex-1 border-r border-[var(--color-border)]">
+            {renderTable(beforeData, "Before", false)}
+          </div>
+          {/* After Panel */}
+          <div className="flex-1">
+            {renderTable(afterData, "After", true)}
+          </div>
+        </div>
+      ) : (
+        <div className="flex-1 flex flex-col overflow-hidden">
+          {/* Tabs */}
+          <div className="flex bg-[var(--color-primary-light)] border-b border-[var(--color-border)]">
+            <button
+              onClick={() => setActiveTab("before")}
+              className={`px-6 py-2 text-sm font-medium transition-colors ${
+                activeTab === "before"
+                  ? "bg-white text-[var(--color-text)] border-b-2 border-[var(--color-accent)]"
+                  : "text-[var(--color-text-secondary)] hover:text-[var(--color-text)]"
+              }`}
+            >
+              Before
+            </button>
+            <button
+              onClick={() => setActiveTab("after")}
+              className={`px-6 py-2 text-sm font-medium transition-colors ${
+                activeTab === "after"
+                  ? "bg-white text-[var(--color-text)] border-b-2 border-[var(--color-accent)]"
+                  : "text-[var(--color-text-secondary)] hover:text-[var(--color-text)]"
+              }`}
+            >
+              After
+            </button>
+          </div>
+          {/* Tab Content */}
+          <div className="flex-1 overflow-hidden">
+            {activeTab === "before"
+              ? renderTable(beforeData, "Before", false)
+              : renderTable(afterData, "After", true)}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default DataView;

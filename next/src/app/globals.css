@@ -13,7 +13,7 @@
     --color-primary-light: #1a0f0f;
     
     /* Background Colors */
-    --color-background: #FFFFFF;
+    --color-background: #0F1215;
     --color-background-secondary: #050304;
     --color-background-tertiary: #E281B1;
     
@@ -38,4 +38,18 @@ body {
     color: var(--color-text);
     margin: 0;
     padding: 0;
+}
+
+/* Hide scrollbar while keeping scroll functionality */
+.scrollbar-hide {
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;  /* Firefox */
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+    display: none;  /* Chrome, Safari and Opera */
+}
+
+button {
+    cursor: pointer;
 }
