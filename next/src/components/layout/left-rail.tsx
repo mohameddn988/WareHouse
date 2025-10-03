@@ -23,7 +23,7 @@ const LeftRail: React.FC<LeftRailProps> = ({ onActionClick }) => {
   const [isCollapsed, setIsCollapsed] = useState(false);
 
   useShortcuts({
-    "ctrl+shift+b": () => setIsCollapsed(!isCollapsed),
+    "ctrl+b": () => setIsCollapsed(!isCollapsed),
   });
   const quickActions = [
     { id: "open", label: "Open", icon: FolderOpen },
@@ -77,7 +77,7 @@ const LeftRail: React.FC<LeftRailProps> = ({ onActionClick }) => {
     <aside
       className={`${
         isCollapsed ? "w-20" : "w-64"
-      } bg-[var(--color-primary)] text-[var(--color-text)] flex flex-col overflow-hidden transition-[width] duration-300`}
+      } h-screen bg-[var(--color-primary)] text-[var(--color-text)] flex flex-col overflow-hidden`}
     >
       {/* Quick Actions Section */}
       <div className="p-4 flex-shrink-0">
@@ -181,7 +181,7 @@ const LeftRail: React.FC<LeftRailProps> = ({ onActionClick }) => {
                 )}
               </div>
               <div
-                className={`text-xs text-[var(--color-text-secondary)] transition-opacity duration-300 ${
+                className={`text-xs text-[var(--color-text)] transition-opacity duration-300 ${
                   isCollapsed ? "opacity-0 hidden" : "opacity-100 delay-150"
                 }`}
               >
@@ -191,33 +191,7 @@ const LeftRail: React.FC<LeftRailProps> = ({ onActionClick }) => {
           ))}
         </div>
 
-        {/* Pipeline Stats */}
-        <div
-          className={`mt-4 pt-4 flex-shrink-0 transition-opacity duration-300 ${
-            isCollapsed ? "opacity-0 hidden" : "opacity-100 delay-150"
-          }`}
-        >
-          <div className="text-xs space-y-2">
-            <div className="flex justify-between">
-              <span className="text-[var(--color-text-secondary)]">
-                Total Steps:
-              </span>
-              <span className="font-medium">4</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-[var(--color-text-secondary)]">
-                Completed:
-              </span>
-              <span className="font-medium">1</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-[var(--color-text-secondary)]">
-                Duration:
-              </span>
-              <span className="font-medium">2m 34s</span>
-            </div>
-          </div>
-        </div>
+        
       </div>
     </aside>
   );

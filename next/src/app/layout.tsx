@@ -30,7 +30,7 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased h-screen overflow-hidden`}
       >
         <Header />
-        <main className="flex h-[calc(100vh-64px)] overflow-hidden">
+        <main className="flex overflow-hidden">
           <LeftRail />
           {children}
         </main>
