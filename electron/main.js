@@ -15,6 +15,7 @@ function createWindow() {
   // In dev mode, load Next.js; in prod, load local files
   const startUrl = process.env.ELECTRON_START_URL || "http://localhost:3000";
   win.loadURL(startUrl);
+  win.setMenu(null);
 }
 
 app.whenReady().then(createWindow);

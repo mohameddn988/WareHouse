@@ -1,3 +1,39 @@
 @import "tailwindcss";
 
 
+:root {
+    /* Primary Colors - Modern Blue */
+    --color-primary: #2563eb;
+    --color-primary-hover: #1d4ed8;
+
+    /* Secondary Colors - Complementary Purple */
+    --color-secondary: #7c3aed;
+    --color-secondary-hover: #6d28d9;
+
+    /* Background Colors */
+    --color-bg: #ffffff;
+    --color-bg-light: #f9fafb;
+    --color-bg-dark: #1f2937;
+
+    /* Text Colors */
+    --color-text-dark: #111827;
+    --color-text-gray: #6b7280;
+    --color-text-light: #f9fafb;
+
+    /* Border Colors */
+    --color-border: #e5e7eb;
+    --color-border-dark: #374151;
+
+    /* Success, Warning, Error */
+    --color-success: #10b981;
+    --color-warning: #f59e0b;
+    --color-error: #ef4444;
+}
+
+body {
+    font-family: 'Arial', sans-serif;
+    background-color: var(--color-bg-light);
+    color: var(--color-text-dark);
+    margin: 0;
+    padding: 0;
+}
