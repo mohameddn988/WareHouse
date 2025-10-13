@@ -41,17 +41,54 @@ const LeftRail: React.FC<LeftRailProps> = ({ onActionClick }) => {
 
   useShortcuts({
     "ctrl+b": toggleLeftRail,
+    "ctrl+shift+d": () => handleActionClick("datasets"),
+    "ctrl+shift+p": () => handleActionClick("projects"),
+    "ctrl+z": () => {
+      if (pathname.startsWith("/dataset")) handleActionClick("undo");
+    },
+    "ctrl+y": () => {
+      if (pathname.startsWith("/dataset")) handleActionClick("redo");
+    },
+    "ctrl+x": () => {
+      if (pathname.startsWith("/dataset")) handleActionClick("cut");
+    },
+    "ctrl+c": () => {
+      if (pathname.startsWith("/dataset")) handleActionClick("copy");
+    },
+    "ctrl+v": () => {
+      if (pathname.startsWith("/dataset")) handleActionClick("paste");
+    },
+    "ctrl+f": () => {
+      if (pathname.startsWith("/dataset")) handleActionClick("search");
+    },
   });
 
-  const isNewProjectPage = pathname === "/" || pathname === "/project" || pathname === "/dataset";
+  const isNewProjectPage =
+    pathname === "/" || pathname === "/project" || pathname === "/dataset";
 
   const handleActionClick = (actionId: string) => {
-    if (actionId === "project") {
+    if (actionId === "dashboard") {
       if (isNewProjectPage) {
         router.push("/create-project");
       } else {
         router.push("/");
       }
+    } else if (actionId === "datasets") {
+      router.push("/dataset");
+    } else if (actionId === "projects") {
+      router.push("/project");
+    } else if (actionId === "undo") {
+      document.execCommand("undo");
+    } else if (actionId === "redo") {
+      document.execCommand("redo");
+    } else if (actionId === "cut") {
+      document.execCommand("cut");
+    } else if (actionId === "copy") {
+      document.execCommand("copy");
+    } else if (actionId === "paste") {
+      document.execCommand("paste");
+    } else if (actionId === "search") {
+      alert("Search functionality not implemented");
     } else if (onActionClick) {
       onActionClick(actionId);
     }
@@ -127,15 +164,15 @@ const LeftRail: React.FC<LeftRailProps> = ({ onActionClick }) => {
           </div>
           <div className="space-y-2 animate-in slide-in-from-top-2 duration-200">
             <button
-              onClick={() => handleActionClick("project")}
+              onClick={() => handleActionClick("dashboard")}
               className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-slate-700/50 transition-all duration-200 group ${
                 isLeftRailCollapsed ? "justify-center px-2" : "text-left"
               }`}
             >
-              <Folder className="w-4 h-4 text-blue-400 group-hover:text-blue-300 transition-colors" />
+              <Home className="w-4 h-4 text-blue-400 group-hover:text-blue-300 transition-colors" />
               {!isLeftRailCollapsed && (
                 <span className="text-sm text-slate-200 group-hover:text-white transition-colors">
-                  {isNewProjectPage ? "New Project" : "Projects"}
+                  {isNewProjectPage ? "New Project" : "Dashboard"}
                 </span>
               )}
             </button>
@@ -147,22 +184,32 @@ const LeftRail: React.FC<LeftRailProps> = ({ onActionClick }) => {
             >
               <Database className="w-4 h-4 text-green-400 group-hover:text-green-300 transition-colors" />
               {!isLeftRailCollapsed && (
-                <span className="text-sm text-slate-200 group-hover:text-white transition-colors">
-                  Datasets
-                </span>
+                <div className="flex-1 flex items-center justify-between">
+                  <span className="text-sm text-slate-200 group-hover:text-white transition-colors">
+                    Datasets
+                  </span>
+                  <span className="text-xs text-slate-400 group-hover:text-slate-300 transition-colors">
+                    Ctrl+Shift+D
+                  </span>
+                </div>
               )}
             </button>
             <button
-              onClick={() => handleActionClick("modules")}
+              onClick={() => handleActionClick("projects")}
               className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-slate-700/50 transition-all duration-200 group ${
                 isLeftRailCollapsed ? "justify-center px-2" : "text-left"
               }`}
             >
-              <Code className="w-4 h-4 text-purple-400 group-hover:text-purple-300 transition-colors" />
+              <FolderOpen className="w-4 h-4 text-purple-400 group-hover:text-purple-300 transition-colors" />
               {!isLeftRailCollapsed && (
-                <span className="text-sm text-slate-200 group-hover:text-white transition-colors">
-                  Modules
-                </span>
+                <div className="flex-1 flex items-center justify-between">
+                  <span className="text-sm text-slate-200 group-hover:text-white transition-colors">
+                    Projects
+                  </span>
+                  <span className="text-xs text-slate-400 group-hover:text-slate-300 transition-colors">
+                    Ctrl+Shift+P
+                  </span>
+                </div>
               )}
             </button>
           </div>
@@ -182,8 +229,13 @@ const LeftRail: React.FC<LeftRailProps> = ({ onActionClick }) => {
             <div className="space-y-1">
               <button
                 onClick={() => handleActionClick("undo")}
+                disabled={!pathname.startsWith("/dataset")}
                 className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-slate-700/50 transition-all duration-200 group ${
                   isLeftRailCollapsed ? "justify-center px-2" : "text-left"
+                } ${
+                  !pathname.startsWith("/dataset")
+                    ? "opacity-50 cursor-not-allowed"
+                    : ""
                 }`}
               >
                 <Undo className="w-4 h-4 text-orange-400 group-hover:text-orange-300 transition-colors" />
@@ -200,8 +252,13 @@ const LeftRail: React.FC<LeftRailProps> = ({ onActionClick }) => {
               </button>
               <button
                 onClick={() => handleActionClick("redo")}
+                disabled={!pathname.startsWith("/dataset")}
                 className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-slate-700/50 transition-all duration-200 group ${
                   isLeftRailCollapsed ? "justify-center px-2" : "text-left"
+                } ${
+                  !pathname.startsWith("/dataset")
+                    ? "opacity-50 cursor-not-allowed"
+                    : ""
                 }`}
               >
                 <Redo className="w-4 h-4 text-orange-400 group-hover:text-orange-300 transition-colors" />
@@ -225,8 +282,13 @@ const LeftRail: React.FC<LeftRailProps> = ({ onActionClick }) => {
             <div className="space-y-1">
               <button
                 onClick={() => handleActionClick("cut")}
+                disabled={!pathname.startsWith("/dataset")}
                 className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-slate-700/50 transition-all duration-200 group ${
                   isLeftRailCollapsed ? "justify-center px-2" : "text-left"
+                } ${
+                  !pathname.startsWith("/dataset")
+                    ? "opacity-50 cursor-not-allowed"
+                    : ""
                 }`}
               >
                 <Scissors className="w-4 h-4 text-red-400 group-hover:text-red-300 transition-colors" />
@@ -243,8 +305,13 @@ const LeftRail: React.FC<LeftRailProps> = ({ onActionClick }) => {
               </button>
               <button
                 onClick={() => handleActionClick("copy")}
+                disabled={!pathname.startsWith("/dataset")}
                 className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-slate-700/50 transition-all duration-200 group ${
                   isLeftRailCollapsed ? "justify-center px-2" : "text-left"
+                } ${
+                  !pathname.startsWith("/dataset")
+                    ? "opacity-50 cursor-not-allowed"
+                    : ""
                 }`}
               >
                 <Clipboard className="w-4 h-4 text-blue-400 group-hover:text-blue-300 transition-colors" />
@@ -261,8 +328,13 @@ const LeftRail: React.FC<LeftRailProps> = ({ onActionClick }) => {
               </button>
               <button
                 onClick={() => handleActionClick("paste")}
+                disabled={!pathname.startsWith("/dataset")}
                 className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-slate-700/50 transition-all duration-200 group ${
                   isLeftRailCollapsed ? "justify-center px-2" : "text-left"
+                } ${
+                  !pathname.startsWith("/dataset")
+                    ? "opacity-50 cursor-not-allowed"
+                    : ""
                 }`}
               >
                 <Clipboard className="w-4 h-4 text-green-400 group-hover:text-green-300 transition-colors" />
@@ -285,8 +357,13 @@ const LeftRail: React.FC<LeftRailProps> = ({ onActionClick }) => {
             {/* Search */}
             <button
               onClick={() => handleActionClick("search")}
+              disabled={!pathname.startsWith("/dataset")}
               className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-slate-700/50 transition-all duration-200 group ${
                 isLeftRailCollapsed ? "justify-center px-2" : "text-left"
+              } ${
+                !pathname.startsWith("/dataset")
+                  ? "opacity-50 cursor-not-allowed"
+                  : ""
               }`}
             >
               <Search className="w-4 h-4 text-yellow-400 group-hover:text-yellow-300 transition-colors" />
@@ -301,40 +378,6 @@ const LeftRail: React.FC<LeftRailProps> = ({ onActionClick }) => {
                 </div>
               )}
             </button>
-          </div>
-        </div>
-
-        {/* Data Overview */}
-        <div className="p-4 border-b border-slate-700/30 hover:border-slate-600/50 transition-colors">
-          <h2
-            className={`text-sm font-semibold text-slate-200 group-hover:text-white transition-colors mb-3 ${
-              isLeftRailCollapsed ? "hidden" : ""
-            }`}
-          >
-            Data Overview
-          </h2>
-          <div className="space-y-2 animate-in slide-in-from-top-2 duration-200">
-            {dataFiles.map((file, index) => (
-              <div
-                key={index}
-                className={`flex items-center gap-3 p-3 rounded-lg bg-gradient-to-r from-slate-800/60 to-slate-700/60 hover:bg-slate-700/80 border border-slate-600/30 transition-all duration-200 group ${
-                  isLeftRailCollapsed ? "justify-center" : ""
-                }`}
-                style={{ animationDelay: `${index * 50}ms` }}
-              >
-                <FileText className="w-4 h-4 text-emerald-400 group-hover:text-emerald-300 transition-colors" />
-                {!isLeftRailCollapsed && (
-                  <div className="flex-1">
-                    <div className="text-sm font-medium text-slate-200 group-hover:text-white transition-colors">
-                      {file.name}
-                    </div>
-                    <div className="text-xs text-slate-400 group-hover:text-slate-300 transition-colors">
-                      {file.rows.toLocaleString()} rows
-                    </div>
-                  </div>
-                )}
-              </div>
-            ))}
           </div>
         </div>
       </div>
