@@ -27,6 +27,7 @@ import {
   Search,
 } from "lucide-react";
 import { useLayout } from "../context/LayoutContext";
+import { useShortcuts } from "../utils/shortcuts";
 
 interface LeftRailProps {
   onActionClick?: (action: string) => void;
@@ -34,6 +35,10 @@ interface LeftRailProps {
 
 const LeftRail: React.FC<LeftRailProps> = ({ onActionClick }) => {
   const { isLeftRailCollapsed, toggleLeftRail } = useLayout();
+
+  useShortcuts({
+    "ctrl+b": toggleLeftRail,
+  });
 
   const handleActionClick = (actionId: string) => {
     if (onActionClick) {
