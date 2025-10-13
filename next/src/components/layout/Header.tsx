@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import { useAuth } from "@/components/context/AuthContext";
 import { useRouter } from "next/navigation";
+import { useShortcuts } from "@/components/utils/shortcuts";
 import {
   FileText,
   Upload,
@@ -26,7 +27,6 @@ import {
   Trash2,
   CheckSquare,
   RefreshCw,
-  Wrench,
   Type,
   ZoomIn,
   ZoomOut,
@@ -112,34 +112,49 @@ const Header: React.FC = () => {
   };
 
   const reloadWindow = () => {
-    console.log("Reload window");
-    setActiveDropdown(null);
-  };
-
-  const toggleDevTools = () => {
-    console.log("Toggle DevTools");
+    window.location.reload();
     setActiveDropdown(null);
   };
 
   const resetZoom = () => {
-    console.log("Reset zoom");
+    // Reset zoom to 100% - note: zoom property is not standard
+    document.body.style.zoom = '100%';
     setActiveDropdown(null);
   };
 
   const zoomIn = () => {
-    console.log("Zoom in");
+    // Increase zoom by 10%
+    const currentZoom = parseFloat(document.body.style.zoom || '1');
+    document.body.style.zoom = (currentZoom + 0.1).toString();
     setActiveDropdown(null);
   };
 
   const zoomOut = () => {
-    console.log("Zoom out");
+    // Decrease zoom by 10%
+    const currentZoom = parseFloat(document.body.style.zoom || '1');
+    document.body.style.zoom = Math.max(0.1, currentZoom - 0.1).toString();
     setActiveDropdown(null);
   };
 
   const toggleFullscreen = () => {
-    console.log("Toggle fullscreen");
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch(err => {
+        console.error(`Error attempting to enable full-screen mode: ${err.message}`);
+      });
+    } else {
+      document.exitFullscreen();
+    }
     setActiveDropdown(null);
   };
+
+  // Keyboard shortcuts for Affichage menu
+  useShortcuts({
+    'ctrl+r': reloadWindow,
+    'ctrl+0': resetZoom,
+    'ctrl+=': zoomIn,
+    'ctrl+-': zoomOut,
+    'f11': toggleFullscreen,
+  });
 
   const navigateBack = () => {
     if (window.history.length > 1) {
@@ -707,22 +722,7 @@ const Header: React.FC = () => {
                 }
               >
                 <RefreshCw size={16} />
-                Recharger
-              </button>
-              <button
-                onClick={toggleDevTools}
-                className="w-full text-left px-4 py-2 text-sm flex items-center gap-2 transition-colors"
-                style={{ color: "var(--color-text-dark)" }}
-                onMouseEnter={(e) =>
-                  (e.currentTarget.style.backgroundColor =
-                    "var(--color-bg-light)")
-                }
-                onMouseLeave={(e) =>
-                  (e.currentTarget.style.backgroundColor = "transparent")
-                }
-              >
-                <Wrench size={16} />
-                Outils de développement
+                Actualise
               </button>
               <div
                 className="my-1"
@@ -741,7 +741,7 @@ const Header: React.FC = () => {
                 }
               >
                 <Type size={16} />
-                Taille normale
+                Reset
               </button>
               <button
                 onClick={zoomIn}
