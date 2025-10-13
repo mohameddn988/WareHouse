@@ -1,7 +1,7 @@
 'use client';
 
 import React from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import {
   FolderOpen,
   Wrench,
@@ -37,14 +37,21 @@ interface LeftRailProps {
 const LeftRail: React.FC<LeftRailProps> = ({ onActionClick }) => {
   const { isLeftRailCollapsed, toggleLeftRail } = useLayout();
   const router = useRouter();
+  const pathname = usePathname();
 
   useShortcuts({
     "ctrl+b": toggleLeftRail,
   });
 
+  const isNewProjectPage = pathname === "/" || pathname === "/project" || pathname === "/dataset";
+
   const handleActionClick = (actionId: string) => {
     if (actionId === "project") {
-      router.push("/");
+      if (isNewProjectPage) {
+        router.push("/create-project");
+      } else {
+        router.push("/");
+      }
     } else if (onActionClick) {
       onActionClick(actionId);
     }
@@ -128,7 +135,7 @@ const LeftRail: React.FC<LeftRailProps> = ({ onActionClick }) => {
               <Folder className="w-4 h-4 text-blue-400 group-hover:text-blue-300 transition-colors" />
               {!isLeftRailCollapsed && (
                 <span className="text-sm text-slate-200 group-hover:text-white transition-colors">
-                  Projects
+                  {isNewProjectPage ? "New Project" : "Projects"}
                 </span>
               )}
             </button>

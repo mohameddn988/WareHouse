@@ -10,7 +10,6 @@ interface Project {
   lastModified: string;
   description: string;
   status: "active" | "completed" | "draft";
-  progress?: number;
 }
 
 interface Dataset {
@@ -20,13 +19,6 @@ interface Dataset {
   rows: number;
   lastImported: string;
   type: string;
-}
-
-interface QuickAction {
-  id: string;
-  label: string;
-  description: string;
-  iconType: "folder" | "upload" | "document" | "clock";
 }
 
 // Icon Components
@@ -129,11 +121,13 @@ const FileIcon = () => (
 export default function DashboardSection() {
   const { user } = useAuth();
   const [recentProjects, setRecentProjects] = useState<Project[]>([]);
+  const [recentDatasets, setRecentDatasets] = useState<Dataset[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (user) {
       fetchProjects();
+      fetchDatasets();
     }
   }, [user]);
 
@@ -155,7 +149,6 @@ export default function DashboardSection() {
           lastModified: new Date(project.updatedAt).toLocaleDateString('fr-FR'),
           description: project.description || '',
           status: project.status,
-          progress: project.status === 'completed' ? 100 : 50, // Default progress
         }));
         setRecentProjects(transformedProjects);
       }
@@ -166,59 +159,32 @@ export default function DashboardSection() {
     }
   };
 
-  const recentDatasets: Dataset[] = [
-    {
-      id: "1",
-      name: "sales_data_2024.csv",
-      size: "2.4 MB",
-      rows: 15420,
-      lastImported: "1 hour ago",
-      type: "CSV",
-    },
-    {
-      id: "2",
-      name: "customer_demographics.xlsx",
-      size: "1.8 MB",
-      rows: 8750,
-      lastImported: "5 hours ago",
-      type: "Excel",
-    },
-    {
-      id: "3",
-      name: "inventory_records.json",
-      size: "3.1 MB",
-      rows: 22100,
-      lastImported: "2 days ago",
-      type: "JSON",
-    },
-  ];
+  const fetchDatasets = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('/api/dataset', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
 
-  const quickActions: QuickAction[] = [
-    {
-      id: "1",
-      label: "New Project",
-      description: "Start a new analysis project",
-      iconType: "folder",
-    },
-    {
-      id: "2",
-      label: "Import Dataset",
-      description: "Upload and import new data",
-      iconType: "upload",
-    },
-    {
-      id: "3",
-      label: "Create Report",
-      description: "Generate a new report",
-      iconType: "document",
-    },
-    {
-      id: "4",
-      label: "Schedule Analysis",
-      description: "Set up automated analysis",
-      iconType: "clock",
-    },
-  ];
+      if (response.ok) {
+        const datasets = await response.json();
+        // Transform to match the expected format and take only the 3 most recent
+        const transformedDatasets = datasets.slice(0, 3).map((dataset: any) => ({
+          id: dataset._id,
+          name: dataset.name,
+          size: `${(dataset.fileSize / 1024 / 1024).toFixed(2)} MB`,
+          rows: dataset.rowCount || 0,
+          lastImported: new Date(dataset.createdAt).toLocaleDateString('fr-FR'),
+          type: dataset.fileType.toUpperCase(),
+        }));
+        setRecentDatasets(transformedDatasets);
+      }
+    } catch (error) {
+      console.error('Error fetching datasets:', error);
+    }
+  };
 
   const router = useRouter();
 
@@ -228,14 +194,6 @@ export default function DashboardSection() {
 
   const handleDatasetClick = (datasetId: string) => {
     router.push(`/dataset/${datasetId}`);
-  };
-
-  const handleQuickAction = (actionId: string) => {
-    if (actionId === "1") { // New Project
-      router.push("/create-project");
-    } else {
-      console.log("Performing action:", actionId);
-    }
   };
 
   const getStatusColor = (status: Project["status"]) => {
@@ -248,19 +206,6 @@ export default function DashboardSection() {
         return "bg-slate-50 text-slate-700 border-slate-200";
       default:
         return "bg-slate-50 text-slate-700 border-slate-200";
-    }
-  };
-
-  const getIcon = (iconType: QuickAction["iconType"]) => {
-    switch (iconType) {
-      case "folder":
-        return <FolderIcon />;
-      case "upload":
-        return <UploadIcon />;
-      case "document":
-        return <DocumentIcon />;
-      case "clock":
-        return <ClockIcon />;
     }
   };
 
@@ -277,37 +222,6 @@ export default function DashboardSection() {
           </p>
         </div>
 
-        {/* Quick Actions Section */}
-        <section className="mb-10">
-          <div className="flex items-center mb-6">
-            <div className="flex items-center gap-3">
-              <div className="w-1 h-8 bg-blue-600 rounded-full"></div>
-              <h2 className="text-2xl font-bold text-slate-900">
-                Quick Actions
-              </h2>
-            </div>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
-            {quickActions.map((action) => (
-              <button
-                key={action.id}
-                onClick={() => handleQuickAction(action.id)}
-                className="group bg-white hover:bg-slate-50 border-2 border-slate-200 hover:border-blue-400 transition-all duration-300 rounded-xl p-6 text-left shadow-sm hover:shadow-lg"
-              >
-                <div className="flex items-start justify-between mb-4">
-                  <div className="p-3 bg-blue-50 group-hover:bg-blue-100 rounded-lg text-blue-600 transition-colors duration-300">
-                    {getIcon(action.iconType)}
-                  </div>
-                </div>
-                <h3 className="text-lg font-semibold text-slate-900 mb-2">
-                  {action.label}
-                </h3>
-                <p className="text-sm text-slate-600">{action.description}</p>
-              </button>
-            ))}
-          </div>
-        </section>
-
         {/* Recent Projects Section */}
         <section className="mb-10">
           <div className="flex items-center justify-between mb-6">
@@ -317,7 +231,10 @@ export default function DashboardSection() {
                 Recent Projects
               </h2>
             </div>
-            <button className="flex items-center gap-2 text-blue-600 hover:text-blue-700 font-medium transition-colors group">
+            <button
+              onClick={() => router.push('/project')}
+              className="flex items-center gap-2 text-blue-600 hover:text-blue-700 font-medium transition-colors group"
+            >
               View All
               <svg
                 className="w-4 h-4 group-hover:translate-x-1 transition-transform"
@@ -360,24 +277,6 @@ export default function DashboardSection() {
                 <p className="text-slate-600 text-sm mb-4 line-clamp-2">
                   {project.description}
                 </p>
-                {project.progress !== undefined && (
-                  <div className="mb-3">
-                    <div className="flex justify-between items-center mb-1">
-                      <span className="text-xs font-medium text-slate-500">
-                        Progress
-                      </span>
-                      <span className="text-xs font-semibold text-slate-700">
-                        {project.progress}%
-                      </span>
-                    </div>
-                    <div className="w-full bg-slate-100 rounded-full h-2">
-                      <div
-                        className="bg-blue-600 h-2 rounded-full transition-all duration-500"
-                        style={{ width: `${project.progress}%` }}
-                      ></div>
-                    </div>
-                  </div>
-                )}
                 <div className="flex items-center text-xs text-slate-500 pt-3 border-t border-slate-100">
                   <ClockIcon />
                   <span className="ml-2">Modified {project.lastModified}</span>
@@ -407,7 +306,10 @@ export default function DashboardSection() {
                 Recent Datasets
               </h2>
             </div>
-            <button className="flex items-center gap-2 text-blue-600 hover:text-blue-700 font-medium transition-colors group">
+            <button
+              onClick={() => router.push('/dataset')}
+              className="flex items-center gap-2 text-blue-600 hover:text-blue-700 font-medium transition-colors group"
+            >
               View All
               <svg
                 className="w-4 h-4 group-hover:translate-x-1 transition-transform"
