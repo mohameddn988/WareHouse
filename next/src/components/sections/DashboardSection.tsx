@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { useRouter } from 'next/navigation';
 
 interface Project {
   id: string;
@@ -207,14 +208,15 @@ export default function DashboardSection() {
     },
   ];
 
+  const router = useRouter();
+
   const handleProjectClick = (projectId: string) => {
     console.log("Opening project:", projectId);
     // Add navigation logic here
   };
 
   const handleDatasetClick = (datasetId: string) => {
-    console.log("Opening dataset:", datasetId);
-    // Add navigation logic here
+    router.push(`/dataset/${datasetId}`);
   };
 
   const handleQuickAction = (actionId: string) => {
