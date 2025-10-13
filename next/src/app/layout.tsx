@@ -6,6 +6,8 @@ import "./globals.css";
 import Header from "@/components/layout/Header";
 import LeftRail from "@/components/layout/LeftRail";
 import { LayoutProvider, useLayout } from "@/components/context/LayoutContext";
+import { AuthProvider, useAuth } from "@/components/context/AuthContext";
+import { usePathname } from "next/navigation";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -19,7 +21,26 @@ const geistMono = Geist_Mono({
 
 function LayoutContent({ children }: { children: React.ReactNode }) {
   const { isLeftRailCollapsed } = useLayout();
+  const { isAuthenticated, loading } = useAuth();
 
+  // Show loading state while checking authentication
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // If NOT authenticated, show ONLY the children (which will be auth page)
+  if (!isAuthenticated) {
+    return <>{children}</>;
+  }
+
+  // If authenticated, show the full layout with Header and LeftRail
   return (
     <>
       <div className="fixed top-0 left-0 right-0 z-20">
@@ -51,9 +72,11 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <LayoutProvider>
-          <LayoutContent>{children}</LayoutContent>
-        </LayoutProvider>
+        <AuthProvider>
+          <LayoutProvider>
+            <LayoutContent>{children}</LayoutContent>
+          </LayoutProvider>
+        </AuthProvider>
       </body>
     </html>
   );

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { useAuth } from "@/components/context/AuthContext";
 import {
   FileText,
   Upload,
@@ -29,9 +30,11 @@ import {
   ZoomIn,
   ZoomOut,
   Maximize,
+  User,
 } from "lucide-react";
 
 const Header: React.FC = () => {
+  const { user, logout: authLogout } = useAuth();
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
   const [selectedBase1, setSelectedBase1] = useState(false);
   const [selectedBase2, setSelectedBase2] = useState(false);
@@ -41,8 +44,8 @@ const Header: React.FC = () => {
     setActiveDropdown(null);
   };
 
-  const logout = () => {
-    console.log("Logout");
+  const logout = async () => {
+    await authLogout();
     setActiveDropdown(null);
   };
 
@@ -773,6 +776,27 @@ const Header: React.FC = () => {
         >
           <HelpCircle size={16} />
           <span>Aide</span>
+        </button>
+      </div>
+
+      {/* User Profile Section */}
+      <div className="ml-auto flex items-center gap-4 px-4">
+        <div className="flex items-center gap-2 px-3 py-1.5 bg-gray-100 rounded-lg">
+          <User size={16} className="text-gray-600" />
+          <span className="text-sm font-medium text-gray-700">
+            {user?.username || "User"}
+          </span>
+          <span className="text-xs text-gray-500 bg-white px-2 py-0.5 rounded">
+            {user?.role || "user"}
+          </span>
+        </div>
+        <button
+          onClick={logout}
+          className="flex items-center gap-2 px-3 py-1.5 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+          title="Logout"
+        >
+          <LogOut size={16} />
+          <span>Logout</span>
         </button>
       </div>
     </div>
