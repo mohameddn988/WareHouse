@@ -8,8 +8,8 @@ export interface IDataset extends Document {
   description?: string;
   fileName: string;
   fileSize: number;
-  fileType: 'csv' | 'json' | 'excel' | 'sql' | 'other';
-  filePath: string;
+  fileType: 'csv' | 'json' | 'excel' | 'xml' | 'yaml' | 'yml' | 'sql';
+  fileData: Buffer;
   rowCount?: number;
   columnCount?: number;
   columns?: {
@@ -58,12 +58,12 @@ const DatasetSchema = new Schema<IDataset>(
     },
     fileType: {
       type: String,
-      enum: ['csv', 'json', 'excel', 'sql', 'other'],
+      enum: ['csv', 'json', 'excel', 'xml', 'yaml', 'yml', 'sql'],
       required: [true, 'File type is required'],
     },
-    filePath: {
-      type: String,
-      required: [true, 'File path is required'],
+    fileData: {
+      type: Buffer,
+      required: [true, 'File data is required'],
     },
     rowCount: {
       type: Number,
@@ -98,6 +98,7 @@ const DatasetSchema = new Schema<IDataset>(
 // Indexes for efficient querying
 DatasetSchema.index({ userId: 1, createdAt: -1 });
 DatasetSchema.index({ projectId: 1, createdAt: -1 });
+
 
 const Dataset: Model<IDataset> = mongoose.models.Dataset || mongoose.model<IDataset>('Dataset', DatasetSchema);
 

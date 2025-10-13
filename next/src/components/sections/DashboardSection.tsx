@@ -1,7 +1,8 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useAuth } from '@/components/context/AuthContext';
 
 interface Project {
   id: string;
@@ -126,33 +127,44 @@ const FileIcon = () => (
 );
 
 export default function DashboardSection() {
-  // Sample data - Replace with actual data from your API/state management
-  const recentProjects: Project[] = [
-    {
-      id: "1",
-      name: "Sales Analysis Q4",
-      lastModified: "2 hours ago",
-      description: "Quarterly sales performance analysis",
-      status: "active",
-      progress: 75,
-    },
-    {
-      id: "2",
-      name: "Customer Segmentation",
-      lastModified: "1 day ago",
-      description: "Market segmentation study",
-      status: "active",
-      progress: 45,
-    },
-    {
-      id: "3",
-      name: "Inventory Forecast",
-      lastModified: "3 days ago",
-      description: "Predictive inventory management",
-      status: "completed",
-      progress: 100,
-    },
-  ];
+  const { user } = useAuth();
+  const [recentProjects, setRecentProjects] = useState<Project[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (user) {
+      fetchProjects();
+    }
+  }, [user]);
+
+  const fetchProjects = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('/api/project', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        const projects = await response.json();
+        // Transform to match the expected format
+        const transformedProjects = projects.slice(0, 3).map((project: any) => ({
+          id: project._id,
+          name: project.name,
+          lastModified: new Date(project.updatedAt).toLocaleDateString('fr-FR'),
+          description: project.description || '',
+          status: project.status,
+          progress: project.status === 'completed' ? 100 : 50, // Default progress
+        }));
+        setRecentProjects(transformedProjects);
+      }
+    } catch (error) {
+      console.error('Error fetching projects:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const recentDatasets: Dataset[] = [
     {
@@ -211,8 +223,7 @@ export default function DashboardSection() {
   const router = useRouter();
 
   const handleProjectClick = (projectId: string) => {
-    console.log("Opening project:", projectId);
-    // Add navigation logic here
+    router.push(`/project/${projectId}`);
   };
 
   const handleDatasetClick = (datasetId: string) => {
@@ -220,8 +231,11 @@ export default function DashboardSection() {
   };
 
   const handleQuickAction = (actionId: string) => {
-    console.log("Performing action:", actionId);
-    // Add action logic here
+    if (actionId === "1") { // New Project
+      router.push("/create-project");
+    } else {
+      console.log("Performing action:", actionId);
+    }
   };
 
   const getStatusColor = (status: Project["status"]) => {

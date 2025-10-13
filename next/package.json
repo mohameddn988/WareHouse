@@ -9,15 +9,22 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@types/papaparse": "^5.3.16",
     "bcryptjs": "^3.0.2",
     "jsonwebtoken": "^9.0.2",
     "lucide-react": "^0.545.0",
     "mongoose": "^8.19.1",
     "next": "15.5.4",
     "next-auth": "^4.24.11",
+    "papaparse": "^5.5.3",
+    "parquetjs": "^0.11.2",
     "react": "19.1.0",
     "react-dom": "19.1.0",
-    "react-feather": "^2.0.10"
+    "react-feather": "^2.0.10",
+    "sql.js": "^1.13.0",
+    "xlsx": "^0.18.5",
+    "xml2js": "^0.6.2",
+    "yaml": "^2.8.1"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
@@ -27,6 +34,7 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@types/xml2js": "^0.4.14",
     "eslint": "^9",
     "eslint-config-next": "15.5.4",
     "tailwindcss": "^4",

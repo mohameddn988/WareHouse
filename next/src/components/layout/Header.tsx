@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import { useAuth } from "@/components/context/AuthContext";
+import { useRouter } from "next/navigation";
 import {
   FileText,
   Upload,
@@ -31,16 +32,19 @@ import {
   ZoomOut,
   Maximize,
   User,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 
 const Header: React.FC = () => {
   const { user, logout: authLogout } = useAuth();
+  const router = useRouter();
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
   const [selectedBase1, setSelectedBase1] = useState(false);
   const [selectedBase2, setSelectedBase2] = useState(false);
 
   const navigateToPage = (page: string) => {
-    console.log(`Navigate to ${page}`);
+    router.push(`/${page}`);
     setActiveDropdown(null);
   };
 
@@ -137,8 +141,37 @@ const Header: React.FC = () => {
     setActiveDropdown(null);
   };
 
+  const navigateBack = () => {
+    if (window.history.length > 1) {
+      router.back();
+    }
+  };
+
+  const navigateForward = () => {
+    // Note: Next.js router doesn't have a forward method, so we'll use browser history
+    window.history.forward();
+  };
+
   return (
     <div className="bg-white border-b border-gray-300 flex items-center sticky top-0 z-10">
+      {/* Navigation buttons */}
+      <div className="flex items-center gap-1 px-2 border-r border-gray-300">
+        <button
+          onClick={navigateBack}
+          className="flex items-center justify-center w-8 h-8 text-gray-600 hover:bg-gray-100 rounded transition-colors"
+          title="Retour"
+        >
+          <ChevronLeft size={16} />
+        </button>
+        <button
+          onClick={navigateForward}
+          className="flex items-center justify-center w-8 h-8 text-gray-600 hover:bg-gray-100 rounded transition-colors"
+          title="Avant"
+        >
+          <ChevronRight size={16} />
+        </button>
+      </div>
+
       {/* Menu items */}
       <div className="flex items-center">
         {/* Menu Fichier */}
@@ -793,10 +826,10 @@ const Header: React.FC = () => {
         <button
           onClick={logout}
           className="flex items-center gap-2 px-3 py-1.5 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-          title="Logout"
+          title="Déconnexion"
         >
           <LogOut size={16} />
-          <span>Logout</span>
+          <span>Déconnexion</span>
         </button>
       </div>
     </div>
