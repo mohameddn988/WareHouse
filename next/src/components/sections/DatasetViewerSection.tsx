@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/components/context/AuthContext";
+import { useDataset } from "@/components/context/DatasetContext";
 import * as XLSX from "xlsx";
 import Papa from "papaparse";
 import { parseString as parseXML } from "xml2js";
@@ -38,6 +39,17 @@ interface DatasetViewerProps {
 
 const DatasetViewer: React.FC<DatasetViewerProps> = ({ datasetId }) => {
   const { user } = useAuth();
+  const {
+    currentData: contextCurrentData,
+    setCurrentData: setContextCurrentData,
+    setOriginalData: setContextOriginalData,
+    setDatasetId: setContextDatasetId,
+    treatedData,
+    lastOperationName,
+    logs,
+    clearLogs,
+    setOnTreatmentApplied,
+  } = useDataset();
   const [datasetInfo, setDatasetInfo] = useState<DatasetInfo | null>(null);
   const [originalData, setOriginalData] = useState<DataRow[]>([]);
   const [allParsedData, setAllParsedData] = useState<DataRow[]>([]);
@@ -48,6 +60,8 @@ const DatasetViewer: React.FC<DatasetViewerProps> = ({ datasetId }) => {
   const [currentPage, setCurrentPage] = useState(0);
   const [pageSize] = useState(100);
   const [maxRows] = useState(10000);
+  const [treatedDataPage, setTreatedDataPage] = useState(0);
+  const [treatedDataCurrentPage, setTreatedDataCurrentPage] = useState(0);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
@@ -56,6 +70,39 @@ const DatasetViewer: React.FC<DatasetViewerProps> = ({ datasetId }) => {
       fetchDatasetInfo();
     }
   }, [datasetId, user]);
+
+  const lastSyncedDataRef = useRef<string | null>(null);
+  const lastSyncedDatasetIdRef = useRef<string | null>(null);
+
+  // Sync local data with context when allParsedData changes
+  useEffect(() => {
+    if (allParsedData.length > 0) {
+      const currentDataString = JSON.stringify(allParsedData);
+      const datasetIdChanged = lastSyncedDatasetIdRef.current !== datasetId;
+      const dataChanged = lastSyncedDataRef.current !== currentDataString;
+
+      if (datasetIdChanged || dataChanged) {
+        setContextDatasetId(datasetId);
+        setContextOriginalData(JSON.parse(JSON.stringify(allParsedData)));
+        setContextCurrentData(JSON.parse(JSON.stringify(allParsedData)));
+        lastSyncedDataRef.current = currentDataString;
+        lastSyncedDatasetIdRef.current = datasetId;
+      }
+    }
+  }, [allParsedData, datasetId]);
+
+  // Reset treated data pagination when treated data changes
+  useEffect(() => {
+    setTreatedDataCurrentPage(0);
+  }, [treatedData]);
+
+  // Update displayed data when context data changes (from treatment operations)
+  // Note: Since we now create new datasets instead of modifying current data,
+  // we don't need to sync the displayed data with context changes
+  useEffect(() => {
+    // This effect is now disabled since we create new datasets
+    // The current dataset remains unchanged
+  }, [contextCurrentData]);
 
   const loadMoreData = async () => {
     if (loadingMore || !hasMoreData) return;
@@ -75,6 +122,29 @@ const DatasetViewer: React.FC<DatasetViewerProps> = ({ datasetId }) => {
       setHasMoreData(endIndex < allParsedData.length && endIndex < maxRows);
     } catch (error) {
       console.error("Error loading more data:", error);
+    } finally {
+      setLoadingMore(false);
+    }
+  };
+
+  const loadMoreTreatedData = async () => {
+    if (
+      loadingMore ||
+      !treatedData ||
+      treatedDataCurrentPage * pageSize >= treatedData.length
+    )
+      return;
+
+    setLoadingMore(true);
+    try {
+      const nextPage = treatedDataCurrentPage + 1;
+      const startIndex = nextPage * pageSize;
+      const endIndex = Math.min(startIndex + pageSize, treatedData.length);
+
+      // For treated data, we just increment the page counter since we already have all data
+      setTreatedDataCurrentPage(nextPage);
+    } catch (error) {
+      console.error("Error loading more treated data:", error);
     } finally {
       setLoadingMore(false);
     }
@@ -154,6 +224,57 @@ const DatasetViewer: React.FC<DatasetViewerProps> = ({ datasetId }) => {
       setDeleting(false);
       setShowDeleteConfirm(false);
     }
+  };
+
+  const handleExportTreatedData = () => {
+    if (!treatedData || treatedData.length === 0) {
+      alert("No treated data available to export");
+      return;
+    }
+
+    // Convert treated data to CSV
+    const headers = Object.keys(treatedData[0]);
+    const csvRows = [
+      headers.join(","),
+      ...treatedData.map((row) =>
+        headers
+          .map((header) => {
+            const value = row[header];
+            const stringValue =
+              value === null || value === undefined ? "" : String(value);
+            // Escape commas and quotes in CSV
+            if (
+              stringValue.includes(",") ||
+              stringValue.includes('"') ||
+              stringValue.includes("\n")
+            ) {
+              return `"${stringValue.replace(/"/g, '""')}"`;
+            }
+            return stringValue;
+          })
+          .join(",")
+      ),
+    ];
+
+    const csvContent = csvRows.join("\n");
+
+    // Create filename with operation name
+    const baseName = datasetInfo?.name?.replace(/\.[^/.]+$/, "") || "dataset"; // Remove extension
+    const operationSuffix = lastOperationName
+      ? `_${lastOperationName.replace(/\s+/g, "_")}`
+      : "";
+    const fileName = `${baseName}${operationSuffix}_treated.csv`;
+
+    // Create and trigger download
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", fileName);
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   const fetchDatasetContent = async (id: string, fileType: string) => {
@@ -783,18 +904,26 @@ const DatasetViewer: React.FC<DatasetViewerProps> = ({ datasetId }) => {
     },
   ]);
 
-  const [viewMode, setViewMode] = useState<"original" | "processed">(
-    "original"
-  );
   const [selectedVisualization, setSelectedVisualization] = useState<
     "histogram" | "scatter" | "bar"
   >("histogram");
   const [selectedColumn, setSelectedColumn] = useState<string>("");
   const [selectedColumnY, setSelectedColumnY] = useState<string>("");
-  const [activeTab, setActiveTab] = useState<"preview" | "visualize">(
-    "preview"
+  const [activeTab, setActiveTab] = useState<"original" | "treated" | "logs">(
+    "original"
   );
   const [selectedColumns, setSelectedColumns] = useState<string[]>([]);
+
+  // Register callback to switch to treated tab when treatment is applied
+  useEffect(() => {
+    setOnTreatmentApplied(() => () => {
+      setActiveTab("treated");
+    });
+
+    return () => {
+      setOnTreatmentApplied(null);
+    };
+  }, [setOnTreatmentApplied]);
 
   // Update selected columns when columns change
   useEffect(() => {
@@ -983,10 +1112,13 @@ const DatasetViewer: React.FC<DatasetViewerProps> = ({ datasetId }) => {
               </div>
             </div>
             <div className="flex gap-2">
-              <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium shadow-sm">
+              <button
+                onClick={handleExportTreatedData}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium shadow-sm"
+              >
                 Export
               </button>
-              
+
               <button
                 onClick={() => setShowDeleteConfirm(true)}
                 className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium shadow-sm"
@@ -1001,42 +1133,47 @@ const DatasetViewer: React.FC<DatasetViewerProps> = ({ datasetId }) => {
         <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
           <div className="flex border-b border-slate-200">
             <button
-              onClick={() => setActiveTab("preview")}
+              onClick={() => setActiveTab("original")}
               className={`flex-1 px-6 py-4 text-sm font-semibold transition-colors ${
-                activeTab === "preview"
+                activeTab === "original"
                   ? "bg-blue-50 text-blue-600 border-b-2 border-blue-600"
                   : "text-slate-600 hover:bg-slate-50"
               }`}
             >
-              Data Preview
+              Original
             </button>
             <button
-              onClick={() => setActiveTab("visualize")}
+              onClick={() => setActiveTab("treated")}
               className={`flex-1 px-6 py-4 text-sm font-semibold transition-colors ${
-                activeTab === "visualize"
+                activeTab === "treated"
                   ? "bg-blue-50 text-blue-600 border-b-2 border-blue-600"
                   : "text-slate-600 hover:bg-slate-50"
               }`}
             >
-              Visualizations
+              Treated
+            </button>
+            <button
+              onClick={() => setActiveTab("logs")}
+              className={`flex-1 px-6 py-4 text-sm font-semibold transition-colors ${
+                activeTab === "logs"
+                  ? "bg-blue-50 text-blue-600 border-b-2 border-blue-600"
+                  : "text-slate-600 hover:bg-slate-50"
+              }`}
+            >
+              Logs
             </button>
           </div>
 
           {/* Tab Content */}
           <div className="p-6">
-            {/* Preview Tab */}
-            {activeTab === "preview" && (
+            {/* Original Tab */}
+            {activeTab === "original" && (
               <div className="space-y-4">
                 <div className="flex justify-between items-center mb-4">
                   <div className="flex items-center gap-3">
                     <h3 className="text-lg font-semibold text-slate-900">
-                      Data Preview ({currentData.length} of{" "}
+                      Original Data ({originalData.length} of{" "}
                       {Math.min(allParsedData.length, maxRows)} rows loaded)
-                      {viewMode === "processed" && (
-                        <span className="ml-2 text-sm text-emerald-600 font-normal">
-                          (Cleaned & Processed)
-                        </span>
-                      )}
                     </h3>
                     <span
                       className={`px-3 py-1 text-xs font-semibold rounded-full ${
@@ -1060,58 +1197,9 @@ const DatasetViewer: React.FC<DatasetViewerProps> = ({ datasetId }) => {
                     </span>
                   </div>
                   <div className="flex items-center gap-3">
-                    {/* Toggle Buttons */}
-                    <div className="flex items-center gap-2 bg-slate-100 rounded-lg p-1">
-                      <button
-                        onClick={() => setViewMode("original")}
-                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md font-medium text-sm transition-all ${
-                          viewMode === "original"
-                            ? "bg-white text-slate-900 shadow-sm"
-                            : "text-slate-600 hover:text-slate-900"
-                        }`}
-                      >
-                        <svg
-                          className="w-4 h-4"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                          />
-                        </svg>
-                        Original
-                      </button>
-                      <button
-                        onClick={() => setViewMode("processed")}
-                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md font-medium text-sm transition-all ${
-                          viewMode === "processed"
-                            ? "bg-emerald-500 text-white shadow-sm"
-                            : "text-slate-600 hover:text-slate-900"
-                        }`}
-                      >
-                        {viewMode === "processed" && (
-                          <svg
-                            className="w-4 h-4"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M5 13l4 4L19 7"
-                            />
-                          </svg>
-                        )}
-                        Traité
-                      </button>
-                    </div>
-
+                    <span className="px-3 py-1 text-xs font-semibold rounded-full bg-slate-100 text-slate-700">
+                      Raw Data
+                    </span>
                     <button className="px-3 py-1.5 text-sm bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition-colors">
                       Download Sample
                     </button>
@@ -1271,147 +1359,175 @@ const DatasetViewer: React.FC<DatasetViewerProps> = ({ datasetId }) => {
               </div>
             )}
 
-            {/* Visualization Tab */}
-            {activeTab === "visualize" && (
-              <div className="space-y-6">
-                {/* Controls */}
-                <div className="bg-slate-50 border border-slate-200 rounded-lg p-4">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* Treated Tab */}
+            {activeTab === "treated" && (
+              <div className="space-y-4">
+                <div className="flex justify-between items-center mb-4">
+                  <div className="flex items-center gap-3">
                     <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-2">
-                        Visualization Type
-                      </label>
-                      <select
-                        value={selectedVisualization}
-                        onChange={(e) =>
-                          setSelectedVisualization(e.target.value as any)
-                        }
-                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
-                      >
-                        <option value="histogram">Histogram</option>
-                        <option value="bar">Bar Chart</option>
-                        <option value="scatter">Scatter Plot</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-2">
-                        {selectedVisualization === "scatter"
-                          ? "X-Axis Column"
-                          : "Column"}
-                      </label>
-                      <select
-                        value={selectedColumn}
-                        onChange={(e) => setSelectedColumn(e.target.value)}
-                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
-                      >
-                        {numericColumns.map((col) => (
-                          <option key={col} value={col}>
-                            {col}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    {selectedVisualization === "scatter" && (
-                      <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-2">
-                          Y-Axis Column
-                        </label>
-                        <select
-                          value={selectedColumnY}
-                          onChange={(e) => setSelectedColumnY(e.target.value)}
-                          className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
-                        >
-                          {numericColumns.map((col) => (
-                            <option key={col} value={col}>
-                              {col}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Visualization Display */}
-                <div className="bg-white border border-slate-200 rounded-lg p-8">
-                  <h4 className="text-lg font-semibold text-slate-900 mb-4">
-                    {selectedVisualization === "histogram" &&
-                      `Distribution of ${selectedColumn}`}
-                    {selectedVisualization === "bar" &&
-                      `${selectedColumn} Bar Chart`}
-                    {selectedVisualization === "scatter" &&
-                      `${selectedColumn} vs ${selectedColumnY}`}
-                  </h4>
-
-                  {/* Simple visualization placeholder */}
-                  <div className="h-96 flex items-end justify-around gap-2 border-b-2 border-l-2 border-slate-300 p-4">
-                    {selectedVisualization === "histogram" && (
-                      <>
-                        {[65, 45, 80, 55, 70, 90, 60, 75, 85, 50, 95, 70].map(
-                          (height, idx) => (
-                            <div
-                              key={idx}
-                              className="flex-1 flex flex-col items-center"
-                            >
-                              <div
-                                className="w-full bg-blue-500 hover:bg-blue-600 transition-colors rounded-t"
-                                style={{ height: `${height}%` }}
-                              ></div>
-                            </div>
-                          )
+                      <h3 className="text-lg font-semibold text-slate-900">
+                        Treated Data (
+                        {Math.min(
+                          (treatedDataCurrentPage + 1) * pageSize,
+                          treatedData ? treatedData.length : 0
                         )}
-                      </>
-                    )}
-                    {selectedVisualization === "bar" && (
-                      <>
-                        {[85, 60, 95, 70, 75, 55, 90, 65].map((height, idx) => (
-                          <div
-                            key={idx}
-                            className="flex-1 flex flex-col items-center"
-                          >
-                            <div
-                              className="w-full bg-emerald-500 hover:bg-emerald-600 transition-colors rounded-t"
-                              style={{ height: `${height}%` }}
-                            ></div>
-                          </div>
-                        ))}
-                      </>
-                    )}
-                    {selectedVisualization === "scatter" && (
-                      <div className="relative w-full h-full">
-                        {[
-                          { x: 20, y: 30 },
-                          { x: 35, y: 45 },
-                          { x: 50, y: 60 },
-                          { x: 25, y: 70 },
-                          { x: 70, y: 40 },
-                          { x: 80, y: 80 },
-                          { x: 45, y: 50 },
-                          { x: 60, y: 35 },
-                          { x: 75, y: 65 },
-                          { x: 15, y: 55 },
-                          { x: 85, y: 25 },
-                          { x: 40, y: 75 },
-                          { x: 55, y: 45 },
-                          { x: 30, y: 85 },
-                          { x: 90, y: 50 },
-                        ].map((point, idx) => (
-                          <div
-                            key={idx}
-                            className="absolute w-3 h-3 bg-purple-500 rounded-full hover:scale-150 transition-transform"
-                            style={{
-                              left: `${point.x}%`,
-                              bottom: `${point.y}%`,
-                            }}
-                          ></div>
-                        ))}
-                      </div>
-                    )}
+                        /{treatedData ? treatedData.length : 0})
+                      </h3>
+                      {lastOperationName && (
+                        <p className="text-sm text-slate-600 mt-1">
+                          Operation:{" "}
+                          <span className="font-medium text-emerald-600">
+                            {lastOperationName}
+                          </span>
+                        </p>
+                      )}
+                    </div>
+                    <span className="px-3 py-1 text-xs font-semibold rounded-full bg-emerald-100 text-emerald-700">
+                      Processed
+                    </span>
+                    <span
+                      className={`px-3 py-1 text-xs font-semibold rounded-full ${
+                        datasetInfo.type === "CSV"
+                          ? "bg-green-100 text-green-700"
+                          : datasetInfo.type === "EXCEL"
+                          ? "bg-blue-100 text-blue-700"
+                          : datasetInfo.type === "JSON"
+                          ? "bg-purple-100 text-purple-700"
+                          : datasetInfo.type === "XML"
+                          ? "bg-orange-100 text-orange-700"
+                          : datasetInfo.type === "YAML" ||
+                            datasetInfo.type === "YML"
+                          ? "bg-pink-100 text-pink-700"
+                          : datasetInfo.type === "SQL"
+                          ? "bg-cyan-100 text-cyan-700"
+                          : "bg-gray-100 text-gray-700"
+                      }`}
+                    >
+                      {datasetInfo.type}
+                    </span>
                   </div>
-                  <div className="mt-4 text-center text-sm text-slate-500">
-                    Interactive visualization based on selected column(s)
+                  <div className="flex items-center gap-3">
+                    <span className="px-3 py-1 text-xs font-semibold rounded-full bg-emerald-100 text-emerald-700">
+                      Processed Data
+                    </span>
                   </div>
                 </div>
+
+                {/* Data Table */}
+                <div className="bg-white border border-slate-200 rounded-lg overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead className="bg-slate-50 border-b border-slate-200">
+                        <tr>
+                          {columns
+                            .filter((col) => selectedColumns.includes(col))
+                            .map((column) => (
+                              <th
+                                key={column}
+                                className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider"
+                              >
+                                {column}
+                              </th>
+                            ))}
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-200">
+                        {treatedData ? (
+                          treatedData
+                            .slice(0, (treatedDataCurrentPage + 1) * pageSize)
+                            .map((row, idx) => (
+                              <tr
+                                key={idx}
+                                className="hover:bg-slate-50 transition-colors"
+                              >
+                                {columns
+                                  .filter((col) =>
+                                    selectedColumns.includes(col)
+                                  )
+                                  .map((column) => (
+                                    <td
+                                      key={column}
+                                      className="px-4 py-3 text-sm text-slate-700 font-mono max-w-xs truncate"
+                                      title={String(row[column] ?? "")}
+                                    >
+                                      {row[column] !== null &&
+                                      row[column] !== undefined
+                                        ? String(row[column])
+                                        : ""}
+                                    </td>
+                                  ))}
+                              </tr>
+                            ))
+                        ) : (
+                          <tr>
+                            <td
+                              colSpan={
+                                columns.filter((col) =>
+                                  selectedColumns.includes(col)
+                                ).length + 1
+                              }
+                              className="px-4 py-8 text-center text-slate-500"
+                            >
+                              No processed data available. Apply a treatment
+                              operation to see results here.
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Load More Treated Data Button */}
+                {treatedData &&
+                  (treatedDataCurrentPage + 1) * pageSize <
+                    treatedData.length && (
+                    <div className="text-center">
+                      <button
+                        onClick={loadMoreTreatedData}
+                        disabled={loadingMore}
+                        className="px-6 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
+                      >
+                        {loadingMore ? (
+                          <div className="flex items-center gap-2">
+                            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                            Loading...
+                          </div>
+                        ) : (
+                          `Load ${Math.min(
+                            pageSize,
+                            treatedData.length -
+                              (treatedDataCurrentPage + 1) * pageSize
+                          )} More Rows`
+                        )}
+                      </button>
+                    </div>
+                  )}
+
+                {/* End of Treated Data Message */}
+                {treatedData &&
+                  (treatedDataCurrentPage + 1) * pageSize >=
+                    treatedData.length &&
+                  treatedData.length > 0 && (
+                    <div className="text-center py-4">
+                      <div className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-100 text-emerald-600 rounded-lg text-sm">
+                        <svg
+                          className="w-4 h-4"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M5 13l4 4L19 7"
+                          />
+                        </svg>
+                        All treated data loaded
+                      </div>
+                    </div>
+                  )}
 
                 {/* Column Filter */}
                 <div className="bg-slate-50 border border-slate-200 rounded-lg p-4">
@@ -1436,6 +1552,180 @@ const DatasetViewer: React.FC<DatasetViewerProps> = ({ datasetId }) => {
                 </div>
               </div>
             )}
+
+            {/* Logs Tab */}
+            {activeTab === "logs" && (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-semibold text-slate-900">
+                    Processing Logs
+                  </h3>
+                  {logs.length > 0 && (
+                    <button
+                      onClick={clearLogs}
+                      className="px-3 py-1.5 text-sm text-slate-600 hover:text-slate-800 border border-slate-300 rounded-lg hover:border-slate-400 transition-colors"
+                    >
+                      Clear Logs
+                    </button>
+                  )}
+                </div>
+
+                {logs.length === 0 ? (
+                  <div className="text-center py-12">
+                    <svg
+                      className="w-12 h-12 text-slate-400 mx-auto mb-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={1.5}
+                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                      />
+                    </svg>
+                    <h4 className="text-lg font-medium text-slate-600 mb-2">
+                      No Processing Logs Yet
+                    </h4>
+                    <p className="text-slate-500 mb-4">
+                      Use the Treatment menu to apply data processing
+                      operations.
+                    </p>
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-left">
+                      <h5 className="text-sm font-semibold text-blue-800 mb-2">
+                        How it works:
+                      </h5>
+                      <ul className="text-sm text-blue-700 space-y-1">
+                        <li>
+                          • Treatments apply operations and show results in
+                          Treated tab
+                        </li>
+                        <li>• Original data remains unchanged</li>
+                        <li>
+                          • Export button downloads treated data with operation
+                          name
+                        </li>
+                        <li>
+                          • Processing logs show operation results and status
+                        </li>
+                      </ul>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="bg-white border border-slate-200 rounded-lg overflow-hidden">
+                    <div className="max-h-96 overflow-y-auto">
+                      <div className="divide-y divide-slate-100">
+                        {logs.map((log, index) => (
+                          <div
+                            key={index}
+                            className={`p-4 ${
+                              log.type === "success"
+                                ? "bg-green-50 border-l-4 border-green-400"
+                                : log.type === "error"
+                                ? "bg-red-50 border-l-4 border-red-400"
+                                : log.type === "warning"
+                                ? "bg-yellow-50 border-l-4 border-yellow-400"
+                                : "bg-blue-50 border-l-4 border-blue-400"
+                            }`}
+                          >
+                            <div className="flex items-start gap-3">
+                              <div
+                                className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center ${
+                                  log.type === "success"
+                                    ? "bg-green-100 text-green-600"
+                                    : log.type === "error"
+                                    ? "bg-red-100 text-red-600"
+                                    : log.type === "warning"
+                                    ? "bg-yellow-100 text-yellow-600"
+                                    : "bg-blue-100 text-blue-600"
+                                }`}
+                              >
+                                {log.type === "success" && (
+                                  <svg
+                                    className="w-4 h-4"
+                                    fill="currentColor"
+                                    viewBox="0 0 20 20"
+                                  >
+                                    <path
+                                      fillRule="evenodd"
+                                      d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                      clipRule="evenodd"
+                                    />
+                                  </svg>
+                                )}
+                                {log.type === "error" && (
+                                  <svg
+                                    className="w-4 h-4"
+                                    fill="currentColor"
+                                    viewBox="0 0 20 20"
+                                  >
+                                    <path
+                                      fillRule="evenodd"
+                                      d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
+                                      clipRule="evenodd"
+                                    />
+                                  </svg>
+                                )}
+                                {log.type === "warning" && (
+                                  <svg
+                                    className="w-4 h-4"
+                                    fill="currentColor"
+                                    viewBox="0 0 20 20"
+                                  >
+                                    <path
+                                      fillRule="evenodd"
+                                      d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                                      clipRule="evenodd"
+                                    />
+                                  </svg>
+                                )}
+                                {log.type === "info" && (
+                                  <svg
+                                    className="w-4 h-4"
+                                    fill="currentColor"
+                                    viewBox="0 0 20 20"
+                                  >
+                                    <path
+                                      fillRule="evenodd"
+                                      d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
+                                      clipRule="evenodd"
+                                    />
+                                  </svg>
+                                )}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <span
+                                    className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+                                      log.type === "success"
+                                        ? "bg-green-100 text-green-700"
+                                        : log.type === "error"
+                                        ? "bg-red-100 text-red-700"
+                                        : log.type === "warning"
+                                        ? "bg-yellow-100 text-yellow-700"
+                                        : "bg-blue-100 text-blue-700"
+                                    }`}
+                                  >
+                                    {log.type.toUpperCase()}
+                                  </span>
+                                  <span className="text-xs text-slate-500">
+                                    {log.timestamp.toLocaleString()}
+                                  </span>
+                                </div>
+                                <p className="text-sm text-slate-700 whitespace-pre-line">
+                                  {log.message}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -1448,8 +1738,8 @@ const DatasetViewer: React.FC<DatasetViewerProps> = ({ datasetId }) => {
               Confirmer la suppression
             </h3>
             <p className="text-slate-600 mb-6">
-              Êtes-vous sûr de vouloir supprimer le dataset "{datasetInfo?.name}" ?
-              Cette action est irréversible.
+              Êtes-vous sûr de vouloir supprimer le dataset "{datasetInfo?.name}
+              " ? Cette action est irréversible.
             </p>
             <div className="flex gap-3 justify-end">
               <button

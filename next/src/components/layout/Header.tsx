@@ -2,8 +2,17 @@
 
 import React, { useState } from "react";
 import { useAuth } from "@/components/context/AuthContext";
+import { useDataset } from "@/components/context/DatasetContext";
 import { useRouter, usePathname } from "next/navigation";
 import { useShortcuts } from "@/components/utils/shortcuts";
+import {
+  applyNormalization,
+  applyStandardization,
+  handleMissingData as handleMissingDataUtil,
+  removeDuplicates as removeDuplicatesUtil,
+  cleanData as cleanDataUtil,
+  createProcessedDataset,
+} from "@/lib/dataProcessing";
 import {
   FileText,
   Upload,
@@ -38,6 +47,7 @@ import {
 
 const Header: React.FC = () => {
   const { user, logout: authLogout } = useAuth();
+  const { currentData, datasetId, addLog, setTreatedData, onTreatmentApplied } = useDataset();
   const router = useRouter();
   const pathname = usePathname();
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
@@ -69,18 +79,108 @@ const Header: React.FC = () => {
     setActiveDropdown(null);
   };
 
-  const handleMissingData = () => {
-    console.log("Handle missing data");
+  const applyNormalizationHandler = async () => {
+    if (!currentData || currentData.length === 0 || !datasetId) {
+      addLog("No dataset loaded for normalization", "error");
+      setActiveDropdown(null);
+      return;
+    }
+
+    const result = applyNormalization(currentData);
+    if (result.success && result.data && result.operationName) {
+      setTreatedData(result.data, result.operationName);
+      addLog(`${result.message}`, "success");
+      // Switch to treated tab
+      if (onTreatmentApplied) {
+        onTreatmentApplied();
+      }
+    } else {
+      addLog(result.message, "error");
+    }
     setActiveDropdown(null);
   };
 
-  const removeDuplicates = () => {
-    console.log("Remove duplicates");
+  const applyStandardizationHandler = async () => {
+    if (!currentData || currentData.length === 0 || !datasetId) {
+      addLog("No dataset loaded for standardization", "error");
+      setActiveDropdown(null);
+      return;
+    }
+
+    const result = applyStandardization(currentData);
+    if (result.success && result.data && result.operationName) {
+      setTreatedData(result.data, result.operationName);
+      addLog(`${result.message}`, "success");
+      // Switch to treated tab
+      if (onTreatmentApplied) {
+        onTreatmentApplied();
+      }
+    } else {
+      addLog(result.message, "error");
+    }
     setActiveDropdown(null);
   };
 
-  const cleanData = () => {
-    console.log("Clean data");
+  const handleMissingDataHandler = async () => {
+    if (!currentData || currentData.length === 0 || !datasetId) {
+      addLog("No dataset loaded for missing data handling", "error");
+      setActiveDropdown(null);
+      return;
+    }
+
+    const result = handleMissingDataUtil(currentData);
+    if (result.success && result.data && result.operationName) {
+      setTreatedData(result.data, result.operationName);
+      addLog(`${result.message}`, "success");
+      // Switch to treated tab
+      if (onTreatmentApplied) {
+        onTreatmentApplied();
+      }
+    } else {
+      addLog(result.message, "error");
+    }
+    setActiveDropdown(null);
+  };
+
+  const removeDuplicatesHandler = async () => {
+    if (!currentData || currentData.length === 0 || !datasetId) {
+      addLog("No dataset loaded for duplicate removal", "error");
+      setActiveDropdown(null);
+      return;
+    }
+
+    const result = removeDuplicatesUtil(currentData);
+    if (result.success && result.data && result.operationName) {
+      setTreatedData(result.data, result.operationName);
+      addLog(`${result.message}`, "success");
+      // Switch to treated tab
+      if (onTreatmentApplied) {
+        onTreatmentApplied();
+      }
+    } else {
+      addLog(result.message, "error");
+    }
+    setActiveDropdown(null);
+  };
+
+  const cleanDataHandler = async () => {
+    if (!currentData || currentData.length === 0 || !datasetId) {
+      addLog("No dataset loaded for cleaning", "error");
+      setActiveDropdown(null);
+      return;
+    }
+
+    const result = cleanDataUtil(currentData);
+    if (result.success && result.data && result.operationName) {
+      setTreatedData(result.data, result.operationName);
+      addLog(`${result.message}`, "success");
+      // Switch to treated tab
+      if (onTreatmentApplied) {
+        onTreatmentApplied();
+      }
+    } else {
+      addLog(result.message, "error");
+    }
     setActiveDropdown(null);
   };
 
@@ -511,6 +611,7 @@ const Header: React.FC = () => {
                 Prétraitement
               </div>
               <button
+                onClick={applyNormalizationHandler}
                 className="w-full text-left px-4 py-2 text-sm flex items-center gap-2 transition-colors"
                 style={{ color: "var(--color-text-dark)" }}
                 onMouseEnter={(e) =>
@@ -525,6 +626,7 @@ const Header: React.FC = () => {
                 Normalisation des données
               </button>
               <button
+                onClick={applyStandardizationHandler}
                 className="w-full text-left px-4 py-2 text-sm flex items-center gap-2 transition-colors"
                 style={{ color: "var(--color-text-dark)" }}
                 onMouseEnter={(e) =>
@@ -539,7 +641,7 @@ const Header: React.FC = () => {
                 Standardisation
               </button>
               <button
-                onClick={handleMissingData}
+                onClick={handleMissingDataHandler}
                 className="w-full text-left px-4 py-2 text-sm flex items-center gap-2 transition-colors"
                 style={{ color: "var(--color-text-dark)" }}
                 onMouseEnter={(e) =>
@@ -554,7 +656,7 @@ const Header: React.FC = () => {
                 Gestion des valeurs manquantes
               </button>
               <button
-                onClick={removeDuplicates}
+                onClick={removeDuplicatesHandler}
                 className="w-full text-left px-4 py-2 text-sm flex items-center gap-2 transition-colors"
                 style={{ color: "var(--color-text-dark)" }}
                 onMouseEnter={(e) =>
@@ -573,7 +675,7 @@ const Header: React.FC = () => {
                 style={{ borderTop: "1px solid var(--color-border)" }}
               ></div>
               <button
-                onClick={cleanData}
+                onClick={cleanDataHandler}
                 className="w-full text-left px-4 py-2 text-sm flex items-center gap-2 transition-colors"
                 style={{ color: "var(--color-text-dark)" }}
                 onMouseEnter={(e) =>

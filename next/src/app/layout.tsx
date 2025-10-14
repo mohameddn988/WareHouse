@@ -7,6 +7,7 @@ import Header from "@/components/layout/Header";
 import LeftRail from "@/components/layout/LeftRail";
 import { LayoutProvider, useLayout } from "@/components/context/LayoutContext";
 import { AuthProvider, useAuth } from "@/components/context/AuthContext";
+import { DatasetProvider } from "@/components/context/DatasetContext";
 import { usePathname } from "next/navigation";
 
 const geistSans = Geist({
@@ -74,7 +75,9 @@ export default function RootLayout({
       >
         <AuthProvider>
           <LayoutProvider>
+            <DatasetProvider>
               <LayoutContent>{children}</LayoutContent>
+            </DatasetProvider>
           </LayoutProvider>
         </AuthProvider>
       </body>
