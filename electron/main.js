@@ -6,6 +6,7 @@ function createWindow() {
   const win = new BrowserWindow({
     width: 1200,
     height: 800,
+    maximized: true,
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
@@ -15,6 +16,7 @@ function createWindow() {
   // In dev mode, load Next.js; in prod, load local files
   const startUrl = process.env.ELECTRON_START_URL || "http://localhost:3000";
   win.loadURL(startUrl);
+  win.maximize();
   win.setMenu(null);
 }
 

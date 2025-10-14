@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { useAuth } from "@/components/context/AuthContext";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { useShortcuts } from "@/components/utils/shortcuts";
 import {
   FileText,
@@ -39,9 +39,15 @@ import {
 const Header: React.FC = () => {
   const { user, logout: authLogout } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
   const [selectedBase1, setSelectedBase1] = useState(false);
   const [selectedBase2, setSelectedBase2] = useState(false);
+
+  const isAnalyseDisabled = true;
+
+  // Check if we're on a dataset page
+  const isOnDatasetPage = pathname?.includes("/dataset") ?? false;
 
   const navigateToPage = (page: string) => {
     router.push(`/${page}`);
@@ -60,16 +66,6 @@ const Header: React.FC = () => {
 
   const importDatabase = () => {
     console.log("Import database");
-    setActiveDropdown(null);
-  };
-
-  const applyStandardization = () => {
-    console.log("Apply standardization");
-    setActiveDropdown(null);
-  };
-
-  const applyNormalization = () => {
-    console.log("Apply normalization");
     setActiveDropdown(null);
   };
 
@@ -118,28 +114,30 @@ const Header: React.FC = () => {
 
   const resetZoom = () => {
     // Reset zoom to 100% - note: zoom property is not standard
-    document.body.style.zoom = '100%';
+    document.body.style.zoom = "100%";
     setActiveDropdown(null);
   };
 
   const zoomIn = () => {
     // Increase zoom by 10%
-    const currentZoom = parseFloat(document.body.style.zoom || '1');
+    const currentZoom = parseFloat(document.body.style.zoom || "1");
     document.body.style.zoom = (currentZoom + 0.1).toString();
     setActiveDropdown(null);
   };
 
   const zoomOut = () => {
     // Decrease zoom by 10%
-    const currentZoom = parseFloat(document.body.style.zoom || '1');
+    const currentZoom = parseFloat(document.body.style.zoom || "1");
     document.body.style.zoom = Math.max(0.1, currentZoom - 0.1).toString();
     setActiveDropdown(null);
   };
 
   const toggleFullscreen = () => {
     if (!document.fullscreenElement) {
-      document.documentElement.requestFullscreen().catch(err => {
-        console.error(`Error attempting to enable full-screen mode: ${err.message}`);
+      document.documentElement.requestFullscreen().catch((err) => {
+        console.error(
+          `Error attempting to enable full-screen mode: ${err.message}`
+        );
       });
     } else {
       document.exitFullscreen();
@@ -149,11 +147,11 @@ const Header: React.FC = () => {
 
   // Keyboard shortcuts for Affichage menu
   useShortcuts({
-    'ctrl+r': reloadWindow,
-    'ctrl+0': resetZoom,
-    'ctrl+=': zoomIn,
-    'ctrl+-': zoomOut,
-    'f11': toggleFullscreen,
+    "ctrl+r": reloadWindow,
+    "ctrl+0": resetZoom,
+    "ctrl+=": zoomIn,
+    "ctrl+-": zoomOut,
+    f11: toggleFullscreen,
   });
 
   const navigateBack = () => {
@@ -466,10 +464,13 @@ const Header: React.FC = () => {
         {/* Menu Traitement */}
         <div
           className="relative"
-          onMouseEnter={() => setActiveDropdown("traitement")}
-          onMouseLeave={() => setActiveDropdown(null)}
+          onMouseEnter={() =>
+            isOnDatasetPage && setActiveDropdown("traitement")
+          }
+          onMouseLeave={() => isOnDatasetPage && setActiveDropdown(null)}
         >
           <button
+            disabled={!isOnDatasetPage}
             className="flex items-center gap-2 px-4 py-3 text-sm transition-colors"
             style={{
               color: "var(--color-text-gray)",
@@ -477,11 +478,15 @@ const Header: React.FC = () => {
                 activeDropdown === "traitement"
                   ? "var(--color-bg-light)"
                   : "transparent",
+              opacity: !isOnDatasetPage ? 0.5 : 1,
+              cursor: !isOnDatasetPage ? "not-allowed" : "pointer",
             }}
             onMouseEnter={(e) =>
+              isOnDatasetPage &&
               (e.currentTarget.style.backgroundColor = "var(--color-bg-light)")
             }
             onMouseLeave={(e) =>
+              isOnDatasetPage &&
               (e.currentTarget.style.backgroundColor =
                 activeDropdown === "traitement"
                   ? "var(--color-bg-light)"
@@ -506,7 +511,6 @@ const Header: React.FC = () => {
                 Prétraitement
               </div>
               <button
-                onClick={applyNormalization}
                 className="w-full text-left px-4 py-2 text-sm flex items-center gap-2 transition-colors"
                 style={{ color: "var(--color-text-dark)" }}
                 onMouseEnter={(e) =>
@@ -521,7 +525,6 @@ const Header: React.FC = () => {
                 Normalisation des données
               </button>
               <button
-                onClick={applyStandardization}
                 className="w-full text-left px-4 py-2 text-sm flex items-center gap-2 transition-colors"
                 style={{ color: "var(--color-text-dark)" }}
                 onMouseEnter={(e) =>
@@ -591,10 +594,13 @@ const Header: React.FC = () => {
         {/* Menu Analyse */}
         <div
           className="relative"
-          onMouseEnter={() => setActiveDropdown("analyse")}
-          onMouseLeave={() => setActiveDropdown(null)}
+          onMouseEnter={() =>
+            !isAnalyseDisabled && setActiveDropdown("analyse")
+          }
+          onMouseLeave={() => !isAnalyseDisabled && setActiveDropdown(null)}
         >
           <button
+            disabled={isAnalyseDisabled}
             className="flex items-center gap-2 px-4 py-3 text-sm transition-colors"
             style={{
               color: "var(--color-text-gray)",
@@ -602,11 +608,15 @@ const Header: React.FC = () => {
                 activeDropdown === "analyse"
                   ? "var(--color-bg-light)"
                   : "transparent",
+              opacity: isAnalyseDisabled ? 0.5 : 1,
+              cursor: isAnalyseDisabled ? "not-allowed" : "pointer",
             }}
             onMouseEnter={(e) =>
+              !isAnalyseDisabled &&
               (e.currentTarget.style.backgroundColor = "var(--color-bg-light)")
             }
             onMouseLeave={(e) =>
+              !isAnalyseDisabled &&
               (e.currentTarget.style.backgroundColor =
                 activeDropdown === "analyse"
                   ? "var(--color-bg-light)"

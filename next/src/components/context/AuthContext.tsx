@@ -37,6 +37,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const checkAuth = async () => {
     try {
       const token = localStorage.getItem('token');
+      
       if (!token) {
         setLoading(false);
         return;
