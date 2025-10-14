@@ -21,14 +21,23 @@ import {
   FileText,
   Folder,
   Code,
-  Undo,
-  Redo,
-  Scissors,
-  Clipboard,
-  Search,
+  Minimize2,
+  Zap,
+  AlertCircle,
+  Copy,
+  Trash2,
 } from "lucide-react";
 import { useLayout } from "../context/LayoutContext";
 import { useShortcuts } from "../utils/shortcuts";
+import { useDataset } from "../context/DatasetContext";
+import { useAuth } from "../context/AuthContext";
+import {
+  applyNormalization,
+  applyStandardization,
+  handleMissingData as handleMissingDataUtil,
+  removeDuplicates as removeDuplicatesUtil,
+  cleanData as cleanDataUtil,
+} from "../../lib/dataProcessing";
 
 interface LeftRailProps {
   onActionClick?: (action: string) => void;
@@ -36,6 +45,9 @@ interface LeftRailProps {
 
 const LeftRail: React.FC<LeftRailProps> = ({ onActionClick }) => {
   const { isLeftRailCollapsed, toggleLeftRail } = useLayout();
+  const { currentData, datasetId, addLog, setTreatedData, onTreatmentApplied } =
+    useDataset();
+  const { user } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
 
@@ -43,23 +55,20 @@ const LeftRail: React.FC<LeftRailProps> = ({ onActionClick }) => {
     "ctrl+b": toggleLeftRail,
     "ctrl+shift+d": () => handleActionClick("datasets"),
     "ctrl+shift+p": () => handleActionClick("projects"),
-    "ctrl+z": () => {
-      if (pathname.startsWith("/dataset")) handleActionClick("undo");
+    "ctrl+1": () => {
+      if (pathname.startsWith("/dataset")) handleActionClick("normalize");
     },
-    "ctrl+y": () => {
-      if (pathname.startsWith("/dataset")) handleActionClick("redo");
+    "ctrl+2": () => {
+      if (pathname.startsWith("/dataset")) handleActionClick("standardize");
     },
-    "ctrl+x": () => {
-      if (pathname.startsWith("/dataset")) handleActionClick("cut");
+    "ctrl+3": () => {
+      if (pathname.startsWith("/dataset")) handleActionClick("missing-data");
     },
-    "ctrl+c": () => {
-      if (pathname.startsWith("/dataset")) handleActionClick("copy");
+    "ctrl+4": () => {
+      if (pathname.startsWith("/dataset")) handleActionClick("duplicates");
     },
-    "ctrl+v": () => {
-      if (pathname.startsWith("/dataset")) handleActionClick("paste");
-    },
-    "ctrl+f": () => {
-      if (pathname.startsWith("/dataset")) handleActionClick("search");
+    "ctrl+5": () => {
+      if (pathname.startsWith("/dataset")) handleActionClick("clean");
     },
   });
 
@@ -77,20 +86,113 @@ const LeftRail: React.FC<LeftRailProps> = ({ onActionClick }) => {
       router.push("/dataset");
     } else if (actionId === "projects") {
       router.push("/project");
-    } else if (actionId === "undo") {
-      document.execCommand("undo");
-    } else if (actionId === "redo") {
-      document.execCommand("redo");
-    } else if (actionId === "cut") {
-      document.execCommand("cut");
-    } else if (actionId === "copy") {
-      document.execCommand("copy");
-    } else if (actionId === "paste") {
-      document.execCommand("paste");
-    } else if (actionId === "search") {
-      alert("Search functionality not implemented");
+    } else if (actionId === "normalize") {
+      applyNormalizationHandler();
+    } else if (actionId === "standardize") {
+      applyStandardizationHandler();
+    } else if (actionId === "missing-data") {
+      handleMissingDataHandler();
+    } else if (actionId === "duplicates") {
+      removeDuplicatesHandler();
+    } else if (actionId === "clean") {
+      cleanDataHandler();
     } else if (onActionClick) {
       onActionClick(actionId);
+    }
+  };
+
+  const applyNormalizationHandler = async () => {
+    if (!currentData || currentData.length === 0 || !datasetId) {
+      addLog("No dataset loaded for normalization", "error");
+      return;
+    }
+
+    const result = applyNormalization(currentData);
+    if (result.success && result.data && result.operationName) {
+      setTreatedData(result.data, result.operationName);
+      addLog(`${result.message}`, "success");
+      // Switch to treated tab
+      if (onTreatmentApplied) {
+        onTreatmentApplied();
+      }
+    } else {
+      addLog(result.message, "error");
+    }
+  };
+
+  const applyStandardizationHandler = async () => {
+    if (!currentData || currentData.length === 0 || !datasetId) {
+      addLog("No dataset loaded for standardization", "error");
+      return;
+    }
+
+    const result = applyStandardization(currentData);
+    if (result.success && result.data && result.operationName) {
+      setTreatedData(result.data, result.operationName);
+      addLog(`${result.message}`, "success");
+      // Switch to treated tab
+      if (onTreatmentApplied) {
+        onTreatmentApplied();
+      }
+    } else {
+      addLog(result.message, "error");
+    }
+  };
+
+  const handleMissingDataHandler = async () => {
+    if (!currentData || currentData.length === 0 || !datasetId) {
+      addLog("No dataset loaded for missing data handling", "error");
+      return;
+    }
+
+    const result = handleMissingDataUtil(currentData);
+    if (result.success && result.data && result.operationName) {
+      setTreatedData(result.data, result.operationName);
+      addLog(`${result.message}`, "success");
+      // Switch to treated tab
+      if (onTreatmentApplied) {
+        onTreatmentApplied();
+      }
+    } else {
+      addLog(result.message, "error");
+    }
+  };
+
+  const removeDuplicatesHandler = async () => {
+    if (!currentData || currentData.length === 0 || !datasetId) {
+      addLog("No dataset loaded for duplicate removal", "error");
+      return;
+    }
+
+    const result = removeDuplicatesUtil(currentData);
+    if (result.success && result.data && result.operationName) {
+      setTreatedData(result.data, result.operationName);
+      addLog(`${result.message}`, "success");
+      // Switch to treated tab
+      if (onTreatmentApplied) {
+        onTreatmentApplied();
+      }
+    } else {
+      addLog(result.message, "error");
+    }
+  };
+
+  const cleanDataHandler = async () => {
+    if (!currentData || currentData.length === 0 || !datasetId) {
+      addLog("No dataset loaded for cleaning", "error");
+      return;
+    }
+
+    const result = cleanDataUtil(currentData);
+    if (result.success && result.data && result.operationName) {
+      setTreatedData(result.data, result.operationName);
+      addLog(`${result.message}`, "success");
+      // Switch to treated tab
+      if (onTreatmentApplied) {
+        onTreatmentApplied();
+      }
+    } else {
+      addLog(result.message, "error");
     }
   };
 
@@ -113,13 +215,37 @@ const LeftRail: React.FC<LeftRailProps> = ({ onActionClick }) => {
     { id: "logout", label: "Logout", icon: LogOut },
   ];
 
-  const editingActions = [
-    { id: "undo", label: "Annuler", icon: Undo, shortcut: "Ctrl+Z" },
-    { id: "redo", label: "Rétablir", icon: Redo, shortcut: "Ctrl+Y" },
-    { id: "cut", label: "Couper", icon: Scissors, shortcut: "Ctrl+X" },
-    { id: "copy", label: "Copier", icon: Clipboard, shortcut: "Ctrl+C" },
-    { id: "paste", label: "Coller", icon: Clipboard, shortcut: "Ctrl+V" },
-    { id: "search", label: "Rechercher", icon: Search, shortcut: "Ctrl+F" },
+  const treatmentActions = [
+    {
+      id: "normalize",
+      label: "Normalisation",
+      icon: Minimize2,
+      shortcut: "Ctrl+1",
+    },
+    {
+      id: "standardize",
+      label: "Standardisation",
+      icon: Zap,
+      shortcut: "Ctrl+2",
+    },
+    {
+      id: "missing-data",
+      label: "Valeurs manquantes",
+      icon: AlertCircle,
+      shortcut: "Ctrl+3",
+    },
+    {
+      id: "duplicates",
+      label: "Supprimer doublons",
+      icon: Copy,
+      shortcut: "Ctrl+4",
+    },
+    {
+      id: "clean",
+      label: "Nettoyer données",
+      icon: Trash2,
+      shortcut: "Ctrl+5",
+    },
   ];
 
   return (
@@ -215,20 +341,20 @@ const LeftRail: React.FC<LeftRailProps> = ({ onActionClick }) => {
           </div>
         </div>
 
-        {/* Édition Section */}
+        {/* Traitement Section */}
         <div className="p-4 border-b border-slate-700/30 hover:border-slate-600/50 transition-colors">
           <h2
             className={`text-sm font-semibold text-slate-200 group-hover:text-white transition-colors mb-3 ${
               isLeftRailCollapsed ? "hidden" : ""
             }`}
           >
-            Édition
+            Traitement
           </h2>
           <div className="space-y-1 animate-in slide-in-from-top-2 duration-200">
-            {/* Undo & Redo */}
-            <div className="space-y-1">
+            {treatmentActions.map((action) => (
               <button
-                onClick={() => handleActionClick("undo")}
+                key={action.id}
+                onClick={() => handleActionClick(action.id)}
                 disabled={!pathname.startsWith("/dataset")}
                 className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-slate-700/50 transition-all duration-200 group ${
                   isLeftRailCollapsed ? "justify-center px-2" : "text-left"
@@ -238,146 +364,19 @@ const LeftRail: React.FC<LeftRailProps> = ({ onActionClick }) => {
                     : ""
                 }`}
               >
-                <Undo className="w-4 h-4 text-orange-400 group-hover:text-orange-300 transition-colors" />
+                <action.icon className="w-4 h-4 text-blue-400 group-hover:text-blue-300 transition-colors" />
                 {!isLeftRailCollapsed && (
                   <div className="flex-1 flex items-center justify-between">
                     <span className="text-sm text-slate-200 group-hover:text-white transition-colors">
-                      Annuler
+                      {action.label}
                     </span>
                     <span className="text-xs text-slate-400 group-hover:text-slate-300 transition-colors">
-                      Ctrl+Z
+                      {action.shortcut}
                     </span>
                   </div>
                 )}
               </button>
-              <button
-                onClick={() => handleActionClick("redo")}
-                disabled={!pathname.startsWith("/dataset")}
-                className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-slate-700/50 transition-all duration-200 group ${
-                  isLeftRailCollapsed ? "justify-center px-2" : "text-left"
-                } ${
-                  !pathname.startsWith("/dataset")
-                    ? "opacity-50 cursor-not-allowed"
-                    : ""
-                }`}
-              >
-                <Redo className="w-4 h-4 text-orange-400 group-hover:text-orange-300 transition-colors" />
-                {!isLeftRailCollapsed && (
-                  <div className="flex-1 flex items-center justify-between">
-                    <span className="text-sm text-slate-200 group-hover:text-white transition-colors">
-                      Rétablir
-                    </span>
-                    <span className="text-xs text-slate-400 group-hover:text-slate-300 transition-colors">
-                      Ctrl+Y
-                    </span>
-                  </div>
-                )}
-              </button>
-            </div>
-
-            {/* Separator */}
-            <div className="my-2 border-t border-slate-600/30"></div>
-
-            {/* Cut, Copy, Paste */}
-            <div className="space-y-1">
-              <button
-                onClick={() => handleActionClick("cut")}
-                disabled={!pathname.startsWith("/dataset")}
-                className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-slate-700/50 transition-all duration-200 group ${
-                  isLeftRailCollapsed ? "justify-center px-2" : "text-left"
-                } ${
-                  !pathname.startsWith("/dataset")
-                    ? "opacity-50 cursor-not-allowed"
-                    : ""
-                }`}
-              >
-                <Scissors className="w-4 h-4 text-red-400 group-hover:text-red-300 transition-colors" />
-                {!isLeftRailCollapsed && (
-                  <div className="flex-1 flex items-center justify-between">
-                    <span className="text-sm text-slate-200 group-hover:text-white transition-colors">
-                      Couper
-                    </span>
-                    <span className="text-xs text-slate-400 group-hover:text-slate-300 transition-colors">
-                      Ctrl+X
-                    </span>
-                  </div>
-                )}
-              </button>
-              <button
-                onClick={() => handleActionClick("copy")}
-                disabled={!pathname.startsWith("/dataset")}
-                className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-slate-700/50 transition-all duration-200 group ${
-                  isLeftRailCollapsed ? "justify-center px-2" : "text-left"
-                } ${
-                  !pathname.startsWith("/dataset")
-                    ? "opacity-50 cursor-not-allowed"
-                    : ""
-                }`}
-              >
-                <Clipboard className="w-4 h-4 text-blue-400 group-hover:text-blue-300 transition-colors" />
-                {!isLeftRailCollapsed && (
-                  <div className="flex-1 flex items-center justify-between">
-                    <span className="text-sm text-slate-200 group-hover:text-white transition-colors">
-                      Copier
-                    </span>
-                    <span className="text-xs text-slate-400 group-hover:text-slate-300 transition-colors">
-                      Ctrl+C
-                    </span>
-                  </div>
-                )}
-              </button>
-              <button
-                onClick={() => handleActionClick("paste")}
-                disabled={!pathname.startsWith("/dataset")}
-                className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-slate-700/50 transition-all duration-200 group ${
-                  isLeftRailCollapsed ? "justify-center px-2" : "text-left"
-                } ${
-                  !pathname.startsWith("/dataset")
-                    ? "opacity-50 cursor-not-allowed"
-                    : ""
-                }`}
-              >
-                <Clipboard className="w-4 h-4 text-green-400 group-hover:text-green-300 transition-colors" />
-                {!isLeftRailCollapsed && (
-                  <div className="flex-1 flex items-center justify-between">
-                    <span className="text-sm text-slate-200 group-hover:text-white transition-colors">
-                      Coller
-                    </span>
-                    <span className="text-xs text-slate-400 group-hover:text-slate-300 transition-colors">
-                      Ctrl+V
-                    </span>
-                  </div>
-                )}
-              </button>
-            </div>
-
-            {/* Separator */}
-            <div className="my-2 border-t border-slate-600/30"></div>
-
-            {/* Search */}
-            <button
-              onClick={() => handleActionClick("search")}
-              disabled={!pathname.startsWith("/dataset")}
-              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-slate-700/50 transition-all duration-200 group ${
-                isLeftRailCollapsed ? "justify-center px-2" : "text-left"
-              } ${
-                !pathname.startsWith("/dataset")
-                  ? "opacity-50 cursor-not-allowed"
-                  : ""
-              }`}
-            >
-              <Search className="w-4 h-4 text-yellow-400 group-hover:text-yellow-300 transition-colors" />
-              {!isLeftRailCollapsed && (
-                <div className="flex-1 flex items-center justify-between">
-                  <span className="text-sm text-slate-200 group-hover:text-white transition-colors">
-                    Rechercher
-                  </span>
-                  <span className="text-xs text-slate-400 group-hover:text-slate-300 transition-colors">
-                    Ctrl+F
-                  </span>
-                </div>
-              )}
-            </button>
+            ))}
           </div>
         </div>
       </div>

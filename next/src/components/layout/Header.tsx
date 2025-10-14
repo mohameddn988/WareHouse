@@ -53,11 +53,15 @@ const Header: React.FC = () => {
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
   const [selectedBase1, setSelectedBase1] = useState(false);
   const [selectedBase2, setSelectedBase2] = useState(false);
+  const [uploading, setUploading] = useState(false);
 
   const isAnalyseDisabled = true;
 
   // Check if we're on a dataset page
   const isOnDatasetPage = pathname?.includes("/dataset") ?? false;
+
+  // Check if we're on a project-related page (specific project/id or dataset/id pages)
+  const isOnProjectRelatedPage = pathname?.startsWith('/project/') || pathname?.startsWith('/dataset/');
 
   const navigateToPage = (page: string) => {
     router.push(`/${page}`);
@@ -76,6 +80,107 @@ const Header: React.FC = () => {
 
   const importDatabase = () => {
     console.log("Import database");
+    setActiveDropdown(null);
+  };
+
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    const allowedTypes = [
+      'text/csv',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'application/vnd.ms-excel',
+      'application/json',
+      'text/plain'
+    ];
+
+    if (!allowedTypes.includes(file.type) && !file.name.match(/\.(csv|xlsx|xls|json|txt|sql|xml|yaml|yml)$/i)) {
+      alert('Type de fichier non supporté. Utilisez CSV, Excel, JSON, TXT, SQL, XML, ou YAML.');
+      return;
+    }
+
+    setUploading(true);
+
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        alert("Vous devez être connecté pour importer un fichier");
+        return;
+      }
+
+      // Get project ID from URL or dataset
+      let projectId = null;
+
+      if (pathname?.startsWith('/project/')) {
+        // On project page, extract project ID from URL
+        const match = pathname.match(/\/project\/([^\/]+)/);
+        projectId = match ? match[1] : null;
+      } else if (pathname?.startsWith('/dataset/')) {
+        // On dataset page, get project ID from current dataset
+        if (datasetId) {
+          try {
+            const response = await fetch(`/api/dataset/${datasetId}`, {
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+            });
+
+            if (response.ok) {
+              const dataset = await response.json();
+              projectId = dataset.projectId;
+            }
+          } catch (error) {
+            console.error("Error fetching dataset info:", error);
+          }
+        }
+      }
+
+      if (!projectId) {
+        alert("Vous devez être sur une page de projet ou de dataset pour importer un fichier.");
+        setUploading(false);
+        return;
+      }
+
+      // Generate a name from the file
+      const baseName = file.name.replace(/\.[^/.]+$/, ""); // Remove extension
+      const fileName = `${baseName}_${new Date().toISOString().split('T')[0]}`;
+
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("name", fileName);
+      formData.append("description", `Imported via header menu on ${new Date().toLocaleDateString()}`);
+      formData.append("projectId", projectId);
+
+      const response = await fetch("/api/dataset", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Erreur lors de l'importation");
+      }
+
+      const newDataset = await response.json();
+      alert(`Fichier "${fileName}" importé avec succès!`);
+
+      // Navigate to the new dataset
+      router.push(`/dataset/${newDataset._id}`);
+
+    } catch (error) {
+      console.error("Upload error:", error);
+      alert(`Erreur lors de l'importation: ${error instanceof Error ? error.message : 'Erreur inconnue'}`);
+    } finally {
+      setUploading(false);
+      // Reset the file input
+      event.target.value = '';
+    }
+
     setActiveDropdown(null);
   };
 
@@ -393,10 +498,21 @@ const Header: React.FC = () => {
         {/* Menu Import */}
         <div
           className="relative"
-          onMouseEnter={() => setActiveDropdown("import")}
-          onMouseLeave={() => setActiveDropdown(null)}
+          onMouseEnter={() =>
+            isOnProjectRelatedPage && setActiveDropdown("import")
+          }
+          onMouseLeave={() => isOnProjectRelatedPage && setActiveDropdown(null)}
         >
           <button
+            onClick={() => {
+              if (isOnProjectRelatedPage) {
+                setActiveDropdown(
+                  activeDropdown === "import" ? null : "import"
+                );
+              } else {
+                navigateToPage("create-project");
+              }
+            }}
             className="flex items-center gap-2 px-4 py-3 text-sm transition-colors"
             style={{
               color: "var(--color-text-gray)",
@@ -418,7 +534,7 @@ const Header: React.FC = () => {
             <Upload size={16} />
             <span>Import</span>
           </button>
-          {activeDropdown === "import" && (
+          {activeDropdown === "import" && isOnProjectRelatedPage && (
             <div
               className="absolute left-0 top-full mt-0 w-64 rounded-lg shadow-lg py-1 z-50"
               style={{
@@ -427,34 +543,22 @@ const Header: React.FC = () => {
               }}
             >
               <button
-                onClick={importDatabase}
-                className="w-full text-left px-4 py-2 text-sm flex items-center gap-2 transition-colors"
-                style={{ color: "var(--color-text-dark)" }}
-                onMouseEnter={(e) =>
-                  (e.currentTarget.style.backgroundColor =
-                    "var(--color-bg-light)")
-                }
-                onMouseLeave={(e) =>
-                  (e.currentTarget.style.backgroundColor = "transparent")
-                }
-              >
-                <Database size={16} />
-                Importer une base
-              </button>
-              <button
                 onClick={() => document.getElementById("file-input")?.click()}
-                className="w-full text-left px-4 py-2 text-sm flex items-center gap-2 transition-colors"
+                disabled={uploading}
+                className="w-full text-left px-4 py-2 text-sm flex items-center gap-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 style={{ color: "var(--color-text-dark)" }}
                 onMouseEnter={(e) =>
+                  !uploading &&
                   (e.currentTarget.style.backgroundColor =
                     "var(--color-bg-light)")
                 }
                 onMouseLeave={(e) =>
+                  !uploading &&
                   (e.currentTarget.style.backgroundColor = "transparent")
                 }
               >
                 <FileDown size={16} />
-                Importer fichier Excel/CSV
+                {uploading ? "Importation en cours..." : "Import dataset"}
               </button>
             </div>
           )}
@@ -944,6 +1048,16 @@ const Header: React.FC = () => {
           <span>Déconnexion</span>
         </button>
       </div>
+
+      {/* Hidden file input for import */}
+      <input
+        id="file-input"
+        type="file"
+        accept=".csv,.xlsx,.xls,.json,.txt,.sql,.xml,.yaml,.yml"
+        onChange={handleFileUpload}
+        style={{ display: "none" }}
+        disabled={uploading}
+      />
     </div>
   );
 };
